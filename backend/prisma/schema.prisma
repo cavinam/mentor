@@ -1,0 +1,204 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===============================================
+// ENUMS
+// ===============================================
+
+enum UserRole {
+  ADMIN
+  SECTION_HEAD // Mengganti APPROVER dengan nama yang lebih spesifik
+  HRGA_MANAGER // Menambahkan role HRGA Manager
+  USER
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELED
+  PARTIALLY_APPROVED
+}
+
+enum ApprovalStatus { // Enum terpisah untuk status persetujuan spesifik
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EquipmentType {
+  PROJECTOR
+  SPEAKER
+  CAMERA
+  HEADPHONE
+  OTHER // Menambahkan OTHER untuk fleksibilitas
+}
+
+// ===============================================
+// MODELS
+// ===============================================
+
+model User {
+  id                      String          @id @default(uuid()) @map("id")
+  userId                  String          @unique @map("user_id")
+  email                   String          @unique
+  password                String
+  fullName                String          @map("full_name")
+  role                    UserRole
+  
+  departmentId            String?         @map("department_id")
+  department              Department?     @relation(fields: [departmentId], references: [id])
+
+  meetings                Meeting[]       @relation("UserBookings")
+  approvals               MeetingApproval[]
+  histories               History[]
+
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model MeetingRoom {
+  id        String    @id @default(uuid()) @map("id") // Menggunakan UUID
+  name      String    @unique
+  capacity  Int       @default(0) // Menambahkan capacity
+  location  String?   // Menambahkan location (opsional)
+  description String? // Menambahkan description (opsional)
+
+  // Relationship
+  meetings  Meeting[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("meeting_rooms")
+}
+
+model Department {
+  id        String    @id @default(uuid()) @map("id") // Menggunakan UUID
+  name      String    @unique
+
+  // Relationship
+  users     User[] 
+  meetings  Meeting[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("departments")
+}
+
+model Equipment {
+  id                String             @id @default(uuid()) @map("id") // Menggunakan UUID
+  name              String             @unique
+  type              EquipmentType
+  quantity          Int                @default(1) // Menambahkan quantity yang tersedia
+  description       String?            // Menambahkan description (opsional)
+
+  // Relationships
+  meetingEquipments MeetingEquipment[]
+  histories         History[] // Equipment juga bisa ada di history
+
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@map("equipment")
+}
+
+model Meeting {
+  id            String              @id @default(uuid()) @map("id") // Menggunakan UUID
+  agenda        String
+  gtimName      String?             @map("gtim_name") // Opsional, jika tidak selalu ada
+  visitorName   String?             @map("visitor_name") // Opsional
+  companyName   String?             @map("company_name") // Opsional
+
+  // Tanggal dan Waktu (terpisah sesuai kebutuhan frontend)
+  startDate     DateTime            @map("start_date") @db.Date // Hanya tanggal
+  endDate       DateTime            @map("end_date") @db.Date   // Hanya tanggal
+  startTime     String              @map("start_time") // Waktu sebagai string (e.g., "09:00")
+  endTime       String              @map("end_time")   // Waktu sebagai string (e.g., "10:30")
+  allDay        Boolean             @default(false) @map("all_day")
+
+  request       String? // Catatan atau permintaan khusus
+
+  isGenbaVisit  Boolean             @default(false) @map("is_genba_visit") // Flag for genba visit
+
+  // Status booking secara keseluruhan
+  overallStatus BookingStatus       @default(PENDING) @map("overall_status")
+
+  // Foreign Keys
+  userId        String              @map("user_id")
+  meetingRoomId String?              @map("meeting_room_id")
+  departmentId  String              @map("department_id")
+
+  // Relationships
+  user          User                @relation("UserBookings", fields: [userId], references: [id])
+  meetingRoom   MeetingRoom?         @relation(fields: [meetingRoomId], references: [id])
+  department    Department          @relation(fields: [departmentId], references: [id])
+
+  approvals     MeetingApproval[] // Daftar persetujuan untuk meeting ini
+  histories     History[]         // Riwayat terkait meeting ini
+  meetingEquipments MeetingEquipment[] // Peralatan yang dipesan untuk meeting ini
+
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  isDeleted     Boolean             @default(false) @map("is_deleted") // Soft delete
+
+  @@map("meetings")
+}
+
+model MeetingApproval {
+  id         String        @id @default(uuid()) @map("id") // Menggunakan UUID
+  meetingId  String        @map("meeting_id")
+  meeting    Meeting       @relation(fields: [meetingId], references: [id], onDelete: Cascade) // Cascade delete jika meeting dihapus
+  approverId String        @map("approver_id")
+  approver   User          @relation(fields: [approverId], references: [id])
+  status     ApprovalStatus @default(PENDING) // Menggunakan enum ApprovalStatus yang terpisah
+  
+  // Menambahkan field untuk melacak kapan disetujui
+  approvedAt DateTime?     @map("approved_at")
+  remark     String?       // Optional remark field
+
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  @@unique([meetingId, approverId]) // Unik agar satu approver hanya bisa approve 1x per meeting
+  @@map("meeting_approvals")
+}
+
+model History {
+  id          String      @id @default(uuid()) @map("id") // Menggunakan UUID
+  userId      String?     @map("user_id") // Bisa null jika aktivitas bukan dari user tertentu (misal: sistem)
+  user        User?       @relation(fields: [userId], references: [id])
+  meetingId   String?     @map("meeting_id") // Bisa null jika history tidak terkait meeting
+  meeting     Meeting?    @relation(fields: [meetingId], references: [id])
+  equipmentId String?     @map("equipment_id") // Bisa null jika history tidak terkait equipment
+  equipment   Equipment?  @relation(fields: [equipmentId], references: [id])
+  action      String      // Deskripsi tindakan (e.g., "Meeting created", "Booking approved by Section Head")
+  details     Json?       // Detail tambahan dalam format JSON (misal: perubahan data lama vs baru)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("history")
+}
+
+model MeetingEquipment {
+  meetingId   String    @map("meeting_id")
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  equipmentId String    @map("equipment_id")
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  quantity    Int       @default(1)
+
+  createdAt   DateTime  @default(now()) @map("created_at") // Tambahkan createdAt untuk audit
+
+  @@id([meetingId, equipmentId])
+  @@map("meeting_equipment")
+}
