@@ -11,7 +11,7 @@ import { CalendarEvent, MeetingRoom, Department } from "@/types/calendar";
 import MeetingDetailModal from "../../components/detail/MeetingDetailModal";
 import { useAuth } from "../../components/AuthContext";
 import AddScheduleModal from "../../components/add-schedule/AddScheduleModal";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 const localizer = momentLocalizer(moment);
 const API_BASE_URL = getApiBase();
@@ -679,11 +679,7 @@ export default function CalendarPage() {
   const handleCreateSubmit = async () => {
     // Validasi minimal
     if (!createForm.departmentId) {
-      // toast.error("Department wajib diisi");
-      return;
-    }
-    if (!createForm.isGenbaVisit && !createForm.meetingRoomId) {
-      // toast.error("Meeting room wajib diisi (kecuali Genba)");
+      toast.error("Department wajib diisi");
       return;
     }
     const startMoment = createForm.start ? moment(createForm.start) : null;
@@ -694,11 +690,11 @@ export default function CalendarPage() {
       !endMoment ||
       !endMoment.isValid()
     ) {
-      // toast.error("Waktu mulai/akhir tidak valid.");
+      toast.error("Waktu mulai/akhir tidak valid.");
       return;
     }
     if (endMoment.isSameOrBefore(startMoment)) {
-      // toast.error("End time harus setelah Start time.");
+      toast.error("End time harus setelah Start time.");
       return;
     }
 
@@ -728,7 +724,7 @@ export default function CalendarPage() {
 
     const token = getToken();
     if (!token) {
-      // toast.error("Token otentikasi tidak ditemukan.");
+      toast.error("Token otentikasi tidak ditemukan.");
       setLoading(false);
       return;
     }
@@ -907,9 +903,9 @@ export default function CalendarPage() {
       await fetchEvents(selectedMeetingRoomId || "");
 
       // Beri notifikasi sukses update (status akan kembali menjadi pending jika sebelumnya approved)
-      // toast.success(
-      //   "Meeting Berhasil di update. Status dikembalikan ke Pending untuk approval ulang."
-      // );
+      toast.success(
+        "Meeting Berhasil di update. Status dikembalikan ke Pending untuk approval ulang."
+      );
 
       // Tutup modal setelah sukses
       closeModal();
@@ -919,7 +915,7 @@ export default function CalendarPage() {
       if (err instanceof Error) {
         errorMessage = err.message;
       }
-      // toast.error(errorMessage);
+      toast.error(errorMessage);
       console.error("Error dalam handleSave:", err);
     } finally {
       setLoading(false);
@@ -989,7 +985,6 @@ export default function CalendarPage() {
 
   return (
     <Layout>
-      <Toaster />
       <div className="bg-white p-8 rounded-lg shadow-lg min-h-[80vh]">
         {/* Pilih Meeting Room */}
         <div className="grid grid-cols-1 sm:grid-cols-3 items-center mb-6 gap-4">

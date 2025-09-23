@@ -101,8 +101,9 @@ export default function AddScheduleModal({
       toast.error("End time harus setelah Start time");
       return;
     }
+
+    // Call the actual submit function from parent component
     onSubmit();
-    toast.success("Booking created successfully");
   };
 
   return (

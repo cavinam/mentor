@@ -3,6 +3,12 @@ import moment from "moment";
 import toast from "react-hot-toast";
 import { MeetingDetailModalProps } from "@/types/modalprops";
 import EquipmentSelector from "../common/EquipmentSelector";
+import CancelRemarkModal from "../CancelRemarkModal";
+
+// Helper function to check if meeting is approved
+const isMeetingApproved = (status?: string) => {
+  return status === "APPROVED";
+};
 
 export default function MeetingDetailModal({
   isModalOpen,
@@ -25,6 +31,9 @@ export default function MeetingDetailModal({
       : [""]
   );
 
+  // State to track if time/date fields have been changed for approved meetings
+  const [showReapprovalWarning, setShowReapprovalWarning] = useState(false);
+
   useEffect(() => {
     if (isModalOpen) {
       setSelectedEquipments(
@@ -32,9 +41,34 @@ export default function MeetingDetailModal({
           ? formData.equipment.map((eq) => eq.id)
           : [""]
       );
+      // Reset warning when modal opens
+      setShowReapprovalWarning(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isModalOpen]);
+
+  // Enhanced handleChange to detect time/date changes for approved meetings
+  const handleChangeWithWarning = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name } = e.target;
+
+    // Check if this is a time/date field change for an approved meeting
+    if (
+      isMeetingApproved(formData.status) &&
+      (name === "startTime" ||
+        name === "endTime" ||
+        name === "startDate" ||
+        name === "endDate")
+    ) {
+      setShowReapprovalWarning(true);
+    }
+
+    // Call the original handleChange
+    handleChange(e);
+  };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
@@ -54,6 +88,34 @@ export default function MeetingDetailModal({
         <h2 className="text-lg font-bold mb-4">Detail Meeting</h2>
 
         <div className="space-y-4">
+          {/* Warning message for approved meetings */}
+          {showReapprovalWarning && isMeetingApproved(formData.status) && (
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-md">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-yellow-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium">
+                    <strong>Perhatian:</strong> Mengubah waktu/tanggal meeting
+                    yang sudah disetujui akan mengubah status menjadi "Pending"
+                    dan memerlukan persetujuan ulang.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Row 1 - Department & Meeting Room */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -78,7 +140,6 @@ export default function MeetingDetailModal({
             <div>
               <label className="block font-semibold mb-1">Meeting Room</label>
               <select
-                required
                 name="meetingRoomId"
                 value={formData.meetingRoomId || ""}
                 onChange={handleChange}
@@ -190,12 +251,14 @@ export default function MeetingDetailModal({
                 value={
                   formData.start ? moment(formData.start).format("HH:mm") : ""
                 }
-                onChange={handleChange}
+                onChange={handleChangeWithWarning}
                 lang="en-GB"
                 step="1800"
-                readOnly={!isEditing}
+                disabled={!isEditing}
                 className={`w-full border border-gray-300 rounded-md px-3 py-2 ${
-                  !isEditing ? "bg-gray-100 text-gray-500" : ""
+                  !isEditing
+                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                    : ""
                 }`}
               />
             </div>
@@ -205,12 +268,14 @@ export default function MeetingDetailModal({
                 type="time"
                 name="endTime"
                 value={formData.end ? moment(formData.end).format("HH:mm") : ""}
-                onChange={handleChange}
+                onChange={handleChangeWithWarning}
                 lang="en-GB"
                 step="1800"
-                readOnly={!isEditing}
+                disabled={!isEditing}
                 className={`w-full border border-gray-300 rounded-md px-3 py-2 ${
-                  !isEditing ? "bg-gray-100 text-gray-500" : ""
+                  !isEditing
+                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                    : ""
                 }`}
               />
             </div>
@@ -229,10 +294,12 @@ export default function MeetingDetailModal({
                     ? moment(formData.start).format("YYYY-MM-DD")
                     : ""
                 }
-                onChange={handleChange}
-                readOnly={!isEditing}
+                onChange={handleChangeWithWarning}
+                disabled={!isEditing}
                 className={`w-full border border-gray-300 rounded-md px-3 py-2 ${
-                  !isEditing ? "bg-gray-100 text-gray-500" : ""
+                  !isEditing
+                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                    : ""
                 }`}
               />
             </div>
@@ -245,10 +312,12 @@ export default function MeetingDetailModal({
                 value={
                   formData.end ? moment(formData.end).format("YYYY-MM-DD") : ""
                 }
-                onChange={handleChange}
-                readOnly={!isEditing}
+                onChange={handleChangeWithWarning}
+                disabled={!isEditing}
                 className={`w-full border border-gray-300 rounded-md px-3 py-2 ${
-                  !isEditing ? "bg-gray-100 text-gray-500" : ""
+                  !isEditing
+                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                    : ""
                 }`}
               />
             </div>
@@ -296,17 +365,7 @@ export default function MeetingDetailModal({
           {isEditing ? (
             <button
               type="button"
-              onClick={async () => {
-                const result = await handleSave();
-                if (
-                  result !== undefined &&
-                  typeof result === "object" &&
-                  "status" in result &&
-                  (result as any).status === 200
-                ) {
-                  toast.success("Meeting updated successfully");
-                }
-              }}
+              onClick={handleSave}
               className="px-4 py-2 rounded bg-blue-600 text-white"
             >
               Simpan

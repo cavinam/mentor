@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getToken, setToken, removeToken } from "../lib/auth";
+import { getToken, setToken, removeToken, isTokenValid } from "../lib/auth";
 import { AuthContextType, AuthProviderProps } from "@/types/authss";
 
 interface AuthContextWithReadyState extends AuthContextType {
@@ -19,12 +19,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const router = useRouter();
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      setIsLoggedIn(true);
-    }
-    setIsAuthReady(true); // Set state menjadi true setelah selesai memeriksa token
-  }, []);
+    const checkAuth = () => {
+      const token = getToken();
+
+      if (token && isTokenValid(token)) {
+        setIsLoggedIn(true);
+      } else {
+        // Token tidak ada, tidak valid, atau kadaluarsa
+        if (token) {
+          // Token ada tapi tidak valid/kadaluarsa, hapus dari localStorage
+          removeToken();
+        }
+
+        // Redirect ke halaman login jika tidak sedang di halaman login
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/login"
+        ) {
+          router.push("/login");
+        }
+
+        setIsLoggedIn(false);
+      }
+
+      setIsAuthReady(true); // Set state menjadi true setelah selesai memeriksa token
+    };
+
+    checkAuth();
+  }, [router]);
 
   const login = (token: string) => {
     setToken(token);

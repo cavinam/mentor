@@ -228,6 +228,14 @@ export default function ApprovalsPage() {
     setRejectModalOpen(true);
   };
 
+  const handleRejectConfirm = async () => {
+    if (!rejectMeetingId) return;
+    await approveOrReject(rejectMeetingId, "REJECTED", rejectRemark);
+    setRejectModalOpen(false);
+    setRejectMeetingId(null);
+    setRejectRemark("");
+  };
+
   const refreshOne = async (meetingId: string) => {
     try {
       const token = getToken();
@@ -653,13 +661,7 @@ export default function ApprovalsPage() {
         <RejectRemarkModal
           isOpen={rejectModalOpen}
           onClose={() => setRejectModalOpen(false)}
-          onConfirm={async () => {
-            if (!rejectMeetingId) return;
-            await approveOrReject(rejectMeetingId, "REJECTED", rejectRemark);
-            setRejectModalOpen(false);
-            setRejectMeetingId(null);
-            setRejectRemark("");
-          }}
+          onConfirm={handleRejectConfirm}
           remark={rejectRemark}
           setRemark={setRejectRemark}
         />

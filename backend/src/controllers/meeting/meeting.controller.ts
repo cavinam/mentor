@@ -191,50 +191,48 @@ export const createMeeting = async (req: Request, res: Response) => {
       });
     }
 
-    if (!isGenbaVisit) {
-      const approvers = await prisma.user.findMany({
-        where: {
-          OR: [
-            { role: UserRole.ADMIN },
-            { role: UserRole.HRGA_MANAGER },
-            {
-              role: UserRole.SECTION_HEAD,
-              departmentId: departmentId,
-            },
-          ],
-        },
-        select: { id: true, email: true, fullName: true, role: true },
-      });
+    const approvers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { role: UserRole.ADMIN },
+          { role: UserRole.HRGA_MANAGER },
+          {
+            role: UserRole.SECTION_HEAD,
+            departmentId: departmentId,
+          },
+        ],
+      },
+      select: { id: true, email: true, fullName: true, role: true },
+    });
 
-      const approvalData = approvers.map((approver) => ({
-        meetingId: newMeeting.id,
-        approverId: approver.id,
-        status: ApprovalStatus.PENDING,
-      }));
+    const approvalData = approvers.map((approver) => ({
+      meetingId: newMeeting.id,
+      approverId: approver.id,
+      status: ApprovalStatus.PENDING,
+    }));
 
-      await prisma.meetingApproval.createMany({
-        data: approvalData,
-      });
+    await prisma.meetingApproval.createMany({
+      data: approvalData,
+    });
 
-      // Send email notification to Section Head and HRGA Manager
-      for (const approver of approvers) {
-        if (
-          approver.role === UserRole.SECTION_HEAD ||
-          approver.role === UserRole.HRGA_MANAGER
-        ) {
-          const subject = "New Meeting Booking Approval Needed";
-          const html = `
+    // Send email notification to Section Head and HRGA Manager
+    for (const approver of approvers) {
+      if (
+        approver.role === UserRole.SECTION_HEAD ||
+        approver.role === UserRole.HRGA_MANAGER
+      ) {
+        const subject = "New Meeting Booking Approval Needed";
+        const html = `
             <p>Dear ${approver.fullName},</p>
             <p>A new meeting booking requires your approval.</p>
             <p>Meeting Agenda: ${newMeeting.agenda}</p>
             <p>Please <a href="http://192.168.50.23:3000/approvals">log in to the system</a> to review and approve the booking.</p>
             <p>Thank you.</p>
           `;
-          try {
-            await sendEmail(approver.email, subject, html);
-          } catch (error) {
-            console.error("Failed to send approval email to", approver.email);
-          }
+        try {
+          await sendEmail(approver.email, subject, html);
+        } catch (error) {
+          console.error("Failed to send approval email to", approver.email);
         }
       }
     }
@@ -797,9 +795,15 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
         meeting: {
           overallStatus: {
             in:
-              userRole === UserRole.ADMIN || userRole === UserRole.HRGA_MANAGER
-                ? [BookingStatus.PENDING, BookingStatus.PARTIALLY_APPROVED]
-                : [BookingStatus.PENDING],
+              userRole === UserRole.ADMIN ||
+              userRole === UserRole.HRGA_MANAGER ||
+              userRole === UserRole.SECTION_HEAD
+                ? [
+                    BookingStatus.PENDING,
+                    BookingStatus.PARTIALLY_APPROVED,
+                    BookingStatus.REJECTED,
+                  ]
+                : [BookingStatus.PENDING, BookingStatus.REJECTED],
           },
           isDeleted: false,
           // Add department filter for SECTION_HEAD
@@ -808,7 +812,7 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
             : {}),
         },
       },
-      include: {
+      select: {
         meeting: {
           select: {
             id: true,
@@ -829,7 +833,7 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
               select: { fullName: true, email: true },
             },
             department: {
-              select: { name: true },
+              select: { id: true, name: true },
             },
             meetingRoom: {
               select: { name: true },
@@ -1070,6 +1074,76 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
       },
     });
 
+    // Send immediate email notification for rejection (not just when final status is REJECTED)
+    if (status === "REJECTED") {
+      console.log(
+        "Individual meeting rejection, sending immediate notification."
+      );
+
+      // Get meeting details for email
+      const meeting = await prisma.meeting.findUnique({
+        where: { id },
+        include: {
+          user: { select: { email: true, fullName: true } },
+          approvals: {
+            include: {
+              approver: {
+                select: { role: true, email: true, fullName: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (meeting) {
+        const userEmail = meeting.user?.email;
+        const userName = meeting.user?.fullName || "User";
+        const adminApprovers = meeting.approvals
+          .filter((a) => a.approver.role === UserRole.ADMIN)
+          .map((a) => a.approver.email);
+
+        // Get the current approver's name for the email
+        const currentApprover = meeting.approvals.find(
+          (a) => a.approverId === approverId
+        );
+        const approverName =
+          currentApprover?.approver?.fullName || "Unknown Approver";
+
+        const subject = "Meeting Rejected Notification";
+        const html = `
+          <p>Dear ${userName},</p>
+          <p>Your meeting booking with agenda "${
+            meeting.agenda
+          }" has been rejected by ${approverName}.</p>
+          <p><strong>Reason:</strong> ${
+            remark || "No specific reason provided"
+          }</p>
+          <p>If you have any questions about this rejection, please contact your supervisor or the meeting approver.</p>
+          <p>Thank you.</p>
+        `;
+
+        try {
+          if (userEmail) {
+            console.log(
+              "Sending immediate rejection email to user:",
+              userEmail
+            );
+            await sendEmail(userEmail, subject, html);
+          }
+          // Send email to admins
+          for (const adminEmail of adminApprovers) {
+            console.log(
+              "Sending immediate rejection email to admin:",
+              adminEmail
+            );
+            await sendEmail(adminEmail, subject, html);
+          }
+        } catch (error) {
+          console.error("Failed to send immediate rejection email:", error);
+        }
+      }
+    }
+
     // Send email notification when meeting is fully approved
     if (newOverallStatus === BookingStatus.APPROVED) {
       console.log(
@@ -1208,6 +1282,72 @@ export const cancelMeeting = async (req: Request, res: Response) => {
         details: { newStatus: BookingStatus.CANCELED, remark },
       },
     });
+
+    // Send email notification to HRGA Manager, Section Head, and Admin
+    try {
+      const meetingDetails = await prisma.meeting.findUnique({
+        where: { id },
+        include: {
+          user: { select: { fullName: true, email: true } },
+          department: { select: { id: true, name: true } },
+        },
+      });
+
+      if (meetingDetails) {
+        // Get HRGA Manager, Section Head from the department, and Admin users
+        const notificationRecipients = await prisma.user.findMany({
+          where: {
+            OR: [
+              { role: UserRole.HRGA_MANAGER },
+              { role: UserRole.ADMIN },
+              {
+                role: UserRole.SECTION_HEAD,
+                departmentId: meetingDetails.departmentId,
+              },
+            ],
+          },
+          select: { id: true, email: true, fullName: true, role: true },
+        });
+
+        const cancelerName = meetingDetails.user?.fullName || "Unknown User";
+        const subject = "Meeting Cancellation Notification";
+        const html = `
+          <p>Dear Team,</p>
+          <p>A meeting has been cancelled in the system.</p>
+          <p><strong>Meeting Details:</strong></p>
+          <ul>
+            <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
+            <li><strong>Department:</strong> ${
+              meetingDetails.department?.name
+            }</li>
+            <li><strong>Cancelled by:</strong> ${cancelerName}</li>
+            <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
+            ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
+          </ul>
+          <p>Please update your records accordingly.</p>
+          <p>Thank you.</p>
+        `;
+
+        // Send email to all recipients
+        for (const recipient of notificationRecipients) {
+          try {
+            await sendEmail(recipient.email, subject, html);
+            console.log(
+              `Cancellation notification sent to ${recipient.email} (${recipient.role})`
+            );
+          } catch (emailError) {
+            console.error(
+              "Failed to send cancellation email to",
+              recipient.email,
+              emailError
+            );
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error("Error sending cancellation notifications:", emailError);
+      // Don't fail the cancellation if email fails
+    }
 
     return res.status(200).json({
       message: "Meeting berhasil dibatalkan.",
