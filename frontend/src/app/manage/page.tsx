@@ -8,45 +8,25 @@ import { getToken } from "../../lib/auth";
 import { getApiBase } from "../../lib/apiBase";
 import MeetingDetailModal from "../../components/detail/MeetingDetailModal";
 import CancelRemarkModal from "../../components/CancelRemarkModal";
+import {
+  ApiMeeting,
+  ApiEquipment,
+  MeetingFormData,
+  JwtPayload,
+  MeetingRoomResponse,
+  CalendarEvent,
+  HydrateObject,
+  SortableValue,
+} from "../../types/api";
 
 type EquipmentItem = { name: string; type?: string; quantity?: number };
 type DepartmentInfo = { id?: string; name?: string };
 type MeetingRoomInfo = { id?: string; name?: string };
 type UserInfo = { fullName?: string; email?: string };
 
-type MeetingRow = {
-  id: string;
-  agenda?: string;
-  request?: string;
-  department?: DepartmentInfo | null;
-  meetingRoom?: MeetingRoomInfo | null;
-  user?: UserInfo | null;
-  startDate: string;
-  endDate: string;
-  startTime: string;
-  endTime: string;
-  meetingEquipments?: { equipment: EquipmentItem; quantity: number }[];
-  overallStatus?: string;
-  gtimName?: string;
-  companyName?: string;
-  visitorName?: string;
-  createdAt?: string;
-};
+type MeetingRow = ApiMeeting;
 
-type FormDataType = {
-  id: string;
-  agenda?: string;
-  start?: Date | null;
-  end?: Date | null;
-  meetingRoomId?: string;
-  departmentId?: string;
-  equipment?: { id: string; name: string; quantity: number }[];
-  gtimName?: string;
-  visitorName?: string;
-  companyName?: string;
-  request?: string;
-  isGenbaVisit?: boolean;
-};
+type FormDataType = MeetingFormData;
 
 type Department = { id: string; name: string };
 
@@ -55,7 +35,7 @@ const API_BASE_URL = getApiBase();
 const buildAuth = (token: string) =>
   token && token.startsWith("Bearer ") ? token : `Bearer ${token}`;
 
-function parseJwt(token: string): any | null {
+function parseJwt(token: string): JwtPayload | null {
   try {
     const base64Url = token.split(".")[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -65,7 +45,7 @@ function parseJwt(token: string): any | null {
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
         .join("")
     );
-    return JSON.parse(jsonPayload);
+    return JSON.parse(jsonPayload) as JwtPayload;
   } catch {
     return null;
   }
@@ -152,7 +132,7 @@ export default function ManageMeetingsPage() {
         cache: "no-store",
       });
       if (!res.ok) return;
-      const data = (await res.json()) as any[];
+      const data = (await res.json()) as MeetingRoomResponse[];
       const normalized = (data || []).map((r) => ({
         id: String(r.id),
         name: r.name,
@@ -170,7 +150,7 @@ export default function ManageMeetingsPage() {
         cache: "no-store",
       });
       if (!res.ok) return;
-      const data = (await res.json()) as any[];
+      const data = (await res.json()) as ApiEquipment[];
       setEquipmentList(data.map((d) => ({ id: d.id, name: d.name })));
     } catch {}
   };
@@ -200,7 +180,7 @@ export default function ManageMeetingsPage() {
         showNotice(err.message || "Gagal mengambil daftar meeting.", "error");
         return;
       }
-      const data = (await res.json()) as any[];
+      const data = (await res.json()) as ApiMeeting[];
       let normalized: MeetingRow[] = (data || []).map((m) => ({
         ...m,
         id: String(m.id),
@@ -260,8 +240,8 @@ export default function ManageMeetingsPage() {
       if (departmentId && m.department?.id !== departmentId) return false;
 
       // Date range overlap
-      const mStart = getDateOnly(m.startDate as any);
-      const mEnd = getDateOnly(m.endDate as any) || mStart;
+      const mStart = getDateOnly(m.startDate as string);
+      const mEnd = getDateOnly(m.endDate as string) || mStart;
       let dateOk = true;
       if (fromDate && toDate) {
         dateOk = mStart <= toDate && mEnd >= fromDate;
@@ -302,7 +282,7 @@ export default function ManageMeetingsPage() {
     // Apply sorting
     if (sortColumn) {
       filtered.sort((a, b) => {
-        let aValue: any, bValue: any;
+        let aValue: SortableValue, bValue: SortableValue;
 
         switch (sortColumn) {
           case "agenda":
@@ -387,15 +367,15 @@ export default function ManageMeetingsPage() {
       const combined = moment(`${d} ${t}`, "YYYY-MM-DD HH:mm:ss");
       return combined.isValid() ? combined.format("DD MMM YYYY, HH:mm") : "-";
     };
-    const start = toDisplay(m.startDate as any, m.startTime as any);
-    const end = toDisplay(m.endDate as any, m.endTime as any);
+    const start = toDisplay(m.startDate as string, m.startTime as string);
+    const end = toDisplay(m.endDate as string, m.endTime as string);
     return `${start} - ${end}`;
   };
 
   const adminView = isAdminish(role);
   const showDepartmentFilter = adminView;
 
-  const convertToCalendarEvent = (m: MeetingRow) => {
+  const convertToCalendarEvent = (m: MeetingRow): CalendarEvent => {
     const start = moment(
       `${m.startDate} ${
         m.startTime.length === 5 ? m.startTime + ":00" : m.startTime
@@ -426,8 +406,8 @@ export default function ManageMeetingsPage() {
     });
 
     return {
-      id: m.id,
-      title: m.agenda || "Meeting",
+      id: String(m.id),
+      title: m.agenda || "Untitled Meeting",
       agenda: m.agenda,
       start,
       end,
@@ -462,7 +442,7 @@ export default function ManageMeetingsPage() {
 
   // Hydrate formData when meetingRooms or selectedMeeting change to fix meetingRoomId
   const hydrateIdsFromNames = React.useCallback(
-    (prev: any) => {
+    (prev: CalendarEvent): CalendarEvent => {
       let next = { ...prev };
 
       // Fix: Set departmentId from meeting data if missing
@@ -481,7 +461,7 @@ export default function ManageMeetingsPage() {
       }
 
       if (next.equipment && next.equipment.length > 0) {
-        next.equipment = next.equipment.map((item: any) => {
+        next.equipment = next.equipment.map((item) => {
           if (item.id) return item; // If ID exists, skip
           const foundEquip = equipmentList.find((eq) => eq.name === item.name);
           return {
@@ -593,7 +573,7 @@ export default function ManageMeetingsPage() {
 
   const handleEquipmentSelectChange = (ids: string[]) => {
     if (!isEditing) return;
-    setFormData((prev: any) => {
+    setFormData((prev: FormDataType | null) => {
       const mapped = ids.map((id) => {
         const found = equipmentList.find((eq) => eq.id === id);
         return { id, name: found?.name || "", quantity: 1 };
@@ -952,7 +932,7 @@ export default function ManageMeetingsPage() {
                           onClick={() => {
                             if (canCancel) {
                               // Open reject remark modal before cancel
-                              setRejectMeetingId(m.id);
+                              setRejectMeetingId(String(m.id));
                               setRejectRemark("");
                               setRejectModalOpen(true);
                             } else {
@@ -984,7 +964,7 @@ export default function ManageMeetingsPage() {
         <MeetingDetailModal
           isModalOpen={modalOpen}
           selectedEvent={convertToCalendarEvent(selectedMeeting)}
-          formData={formData as any}
+          formData={formData as CalendarEvent}
           isEditing={isEditing}
           departments={departments}
           meetingRooms={meetingRooms}
@@ -995,7 +975,7 @@ export default function ManageMeetingsPage() {
             setFormData((prev: FormDataType | null) => {
               if (!prev) return null;
 
-              let newValue: any = value;
+              let newValue: Date | null = value as Date | null;
 
               // Handle date and time fields properly
               if (name === "startDate" || name === "endDate") {

@@ -7,29 +7,35 @@ import { useAuth } from "../../components/AuthContext";
 import { getToken } from "../../lib/auth";
 import { getApiBase } from "../../lib/apiBase";
 import RejectRemarkModal from "@/components/RejectRemarkModal";
-
-type EquipmentItem = { name: string; type?: string; quantity?: number };
-type DepartmentInfo = { id?: string; name?: string };
-type MeetingRoomInfo = { name?: string };
-type UserInfo = { fullName?: string; email?: string };
+import { ApiMeeting, MeetingStatus, UserRole } from "@/types/api";
+import { CalendarEvent } from "@/types/calendar";
 
 type PendingApprovalMeeting = {
   id: string;
   agenda?: string;
   request?: string;
-  department?: DepartmentInfo | null;
-  meetingRoom?: MeetingRoomInfo | null;
-  user?: UserInfo | null;
-  startDate: string; // ISO or date-only string
+  department?: { id?: string; name?: string } | null;
+  meetingRoom?: { id?: string; name?: string } | null;
+  user?: { fullName?: string; email?: string } | null;
+  startDate: string;
   endDate: string;
-  startTime: string; // "HH:mm:ss" or "HH:mm"
+  startTime: string;
   endTime: string;
-  meetingEquipments?: { equipment: EquipmentItem; quantity: number }[];
-  overallStatus?: string;
+  meetingEquipments?: {
+    equipment: { name: string; type?: string; quantity?: number };
+    quantity: number;
+  }[];
+  overallStatus?: MeetingStatus;
   gtimName?: string;
   companyName?: string;
   visitorName?: string;
   createdAt?: string;
+  approvals?: Array<{
+    id: string;
+    status: string;
+    remark?: string;
+    approver: { id: string; fullName?: string };
+  }>;
 };
 
 const API_BASE_URL = getApiBase();
@@ -38,7 +44,9 @@ const API_BASE_URL = getApiBase();
 const buildAuth = (token: string) =>
   token && token.startsWith("Bearer ") ? token : `Bearer ${token}`;
 
-function parseJwt(token: string): any | null {
+function parseJwt(
+  token: string
+): { role?: string; departmentId?: string; userId?: string } | null {
   try {
     const base64Url = token.split(".")[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -116,11 +124,14 @@ export default function ApprovalsPage() {
         showNotice(err.message || "Gagal mengambil daftar meeting.", "error");
         return;
       }
-      const data = (await res.json()) as any[];
-      let normalized: PendingApprovalMeeting[] = (data || []).map((m: any) => ({
-        ...m,
-        id: String(m.id),
-      }));
+      const data = (await res.json()) as ApiMeeting[];
+      let normalized: PendingApprovalMeeting[] = (data || []).map(
+        (m: ApiMeeting) => ({
+          ...m,
+          id: String(m.id),
+          overallStatus: m.overallStatus as MeetingStatus,
+        })
+      );
 
       // Filter for SECTION_HEAD to only show meetings from their department
       if (role === "SECTION_HEAD" && userDepartmentId) {
@@ -509,17 +520,17 @@ export default function ApprovalsPage() {
                         <td className="px-3 py-2 text-sm text-gray-700">
                           {(() => {
                             // First try to find current user's approval remark
-                            const userApproval = (m as any).approvals?.find(
-                              (a: any) => a.approver.id === currentUserId
+                            const userApproval = m.approvals?.find(
+                              (a) => a.approver.id === currentUserId
                             );
                             if (userApproval?.remark) {
                               return userApproval.remark;
                             }
 
                             // If no user-specific remark, find any approval with a remark
-                            const anyApprovalWithRemark = (
-                              m as any
-                            ).approvals?.find((a: any) => a.remark);
+                            const anyApprovalWithRemark = m.approvals?.find(
+                              (a) => a.remark
+                            );
                             if (anyApprovalWithRemark?.remark) {
                               return `${anyApprovalWithRemark.remark} (${
                                 anyApprovalWithRemark.approver.fullName ||
