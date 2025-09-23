@@ -235,7 +235,7 @@ export default function ManageMeetingsPage() {
 
   const filteredItems = useMemo(() => {
     const needle = searchText.trim().toLowerCase();
-    let filtered = items.filter((m) => {
+    const filtered = items.filter((m) => {
       // Department filter
       if (departmentId && m.department?.id !== departmentId) return false;
 
@@ -443,7 +443,7 @@ export default function ManageMeetingsPage() {
   // Hydrate formData when meetingRooms or selectedMeeting change to fix meetingRoomId
   const hydrateIdsFromNames = React.useCallback(
     (prev: CalendarEvent): CalendarEvent => {
-      let next = { ...prev };
+      const next = { ...prev };
 
       // Fix: Set departmentId from meeting data if missing
       if (!next.departmentId && next.departmentName) {
@@ -538,9 +538,8 @@ export default function ManageMeetingsPage() {
       endTime: moment(formData.end).format("HH:mm:ss"),
       meetingRoomId: formData.meetingRoomId,
       departmentId: formData.departmentId,
-      equipmentIds: formData.equipment?.map((e: any) => e.id) || [],
-      equipmentQuantities:
-        formData.equipment?.map((e: any) => e.quantity) || [],
+      equipmentIds: formData.equipment?.map((e) => e.id) || [],
+      equipmentQuantities: formData.equipment?.map((e) => e.quantity) || [],
       gtimName: formData.gtimName,
       visitorName: formData.visitorName,
       companyName: formData.companyName,
@@ -975,7 +974,12 @@ export default function ManageMeetingsPage() {
             setFormData((prev: FormDataType | null) => {
               if (!prev) return null;
 
-              let newValue: Date | null = value as Date | null;
+              let newValue: Date | null = null;
+
+              if (value) {
+                newValue =
+                  typeof value === "string" ? new Date(value) : (value as Date);
+              }
 
               // Handle date and time fields properly
               if (name === "startDate" || name === "endDate") {
