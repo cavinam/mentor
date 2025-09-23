@@ -15,14 +15,8 @@ import {
   JwtPayload,
   MeetingRoomResponse,
   CalendarEvent,
-  HydrateObject,
   SortableValue,
 } from "../../types/api";
-
-type EquipmentItem = { name: string; type?: string; quantity?: number };
-type DepartmentInfo = { id?: string; name?: string };
-type MeetingRoomInfo = { id?: string; name?: string };
-type UserInfo = { fullName?: string; email?: string };
 
 type MeetingRow = ApiMeeting;
 
@@ -168,8 +162,6 @@ export default function ManageMeetingsPage() {
         return;
       }
 
-      const payload = token ? parseJwt(token) : null;
-
       const endpoint = adminView ? `/api/meetings` : `/api/meetings/mine`;
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: { Authorization: buildAuth(token) },
@@ -213,9 +205,9 @@ export default function ManageMeetingsPage() {
   useEffect(() => {
     if (!isAuthReady || !isLoggedIn) return;
     const token = getToken();
-    const payload = token ? parseJwt(token) : null;
-    const r = payload?.role as string | undefined;
-    const depId = payload?.userDepartmentId as string | undefined;
+    const parsedPayload = token ? parseJwt(token) : null;
+    const r = parsedPayload?.role as string | undefined;
+    const depId = parsedPayload?.userDepartmentId as string | undefined;
     setRole(r);
     setUserDepartmentId(depId);
     const adminView = isAdminish(r);
@@ -483,39 +475,16 @@ export default function ManageMeetingsPage() {
       const hydrated = hydrateIdsFromNames(converted);
       setFormData(hydrated);
     }
-  }, [selectedMeeting, meetingRooms.length, hydrateIdsFromNames]);
+  }, [
+    selectedMeeting,
+    meetingRooms.length,
+    hydrateIdsFromNames,
+    convertToCalendarEvent,
+  ]);
 
   const closeMeetingDetail = () => {
     setSelectedMeeting(null);
     setModalOpen(false);
-  };
-
-  const cancelMeeting = async (meetingId: string) => {
-    const token = getToken();
-    if (!token) {
-      showNotice("Token otentikasi tidak ditemukan.", "error");
-      return;
-    }
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/meetings/${meetingId}/cancel`,
-        {
-          method: "PATCH",
-          headers: { Authorization: buildAuth(token) },
-        }
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showNotice(err.message || "Gagal membatalkan meeting.", "error");
-        return;
-      }
-      showNotice("Meeting berhasil dibatalkan.", "success");
-      // Refresh list after cancel
-      fetchMeetings(adminView, role, userDepartmentId);
-    } catch (e) {
-      console.error(e);
-      showNotice("Terjadi kesalahan saat membatalkan meeting.", "error");
-    }
   };
 
   const handleSave = async () => {
@@ -581,7 +550,7 @@ export default function ManageMeetingsPage() {
     });
   };
 
-  const handleEquipmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEquipmentChange = (_e: React.ChangeEvent<HTMLInputElement>) => {
     // Not used in current modal
   };
 
