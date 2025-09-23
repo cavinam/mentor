@@ -8,10 +8,6 @@ import {
 } from "@prisma/client";
 
 import { sendEmail } from "../../utils/email";
-import {
-  decodeTokenPayload,
-  debugUserAndDepartment,
-} from "../../utils/debugHelpers";
 
 export const createMeeting = async (req: Request, res: Response) => {
   try {
@@ -319,22 +315,12 @@ export const getMyMeetings = async (req: Request, res: Response) => {
     const userDepartmentId = (req.user as any)?.departmentId;
     const userRole = req.user?.role;
 
-    console.log(
-      `[DEBUG] getMyMeetings called for userId: ${userId}, role: ${userRole}, departmentId: ${userDepartmentId}`
-    );
-
     if (!userId) {
       return res.status(401).json({ message: "User not authenticated." });
     }
 
-    // Debug: Check user and department data
-    await debugUserAndDepartment(userId);
-
     // If user is SECTION_HEAD, return meetings filtered by department
     if (req.user?.role === "SECTION_HEAD" && userDepartmentId) {
-      console.log(
-        `[DEBUG] SECTION_HEAD filtering by departmentId: ${userDepartmentId}`
-      );
       const meetings = await prisma.meeting.findMany({
         where: {
           isDeleted: false,
@@ -390,7 +376,6 @@ export const getMyMeetings = async (req: Request, res: Response) => {
     }
 
     // For other roles, return meetings created by the user
-    console.log(`[DEBUG] Non-SECTION_HEAD filtering by userId: ${userId}`);
     const meetings = await prisma.meeting.findMany({
       where: {
         isDeleted: false,
@@ -734,8 +719,6 @@ export const updateMeeting = async (req: Request, res: Response) => {
       },
     });
 
-    console.log("ini isi updatean", req.body);
-
     if (equipmentIds) {
       await prisma.meetingEquipment.deleteMany({
         where: { meetingId: meetingId },
@@ -783,10 +766,6 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
     const approverId = req.user?.id;
     const userDepartmentId = (req.user as any)?.departmentId;
     const userRole = req.user?.role;
-
-    console.log(
-      `[DEBUG] getPendingApprovals called for userId: ${approverId}, role: ${userRole}, departmentId: ${userDepartmentId}`
-    );
 
     const pendingMeetings = await prisma.meetingApproval.findMany({
       where: {
@@ -859,12 +838,6 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
         createdAt: "desc",
       },
     });
-
-    console.log(`[DEBUG] Pending meetings fetched: ${pendingMeetings.length}`);
-    console.log(
-      `[DEBUG] Meetings detail:`,
-      pendingMeetings.map((p) => p.meeting)
-    );
 
     // Mengembalikan data meeting saja, bukan MeetingApproval
     const meetings = pendingMeetings.map((approval) => approval.meeting);
@@ -1037,8 +1010,6 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
         where: { meetingId: id },
       });
 
-      console.log("All approvals for meeting", id, allApprovals);
-
       const isRejected = allApprovals.some(
         (approval) => approval.status === ApprovalStatus.REJECTED
       );
@@ -1076,10 +1047,6 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
 
     // Send immediate email notification for rejection (not just when final status is REJECTED)
     if (status === "REJECTED") {
-      console.log(
-        "Individual meeting rejection, sending immediate notification."
-      );
-
       // Get meeting details for email
       const meeting = await prisma.meeting.findUnique({
         where: { id },
@@ -1124,18 +1091,10 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
 
         try {
           if (userEmail) {
-            console.log(
-              "Sending immediate rejection email to user:",
-              userEmail
-            );
             await sendEmail(userEmail, subject, html);
           }
           // Send email to admins
           for (const adminEmail of adminApprovers) {
-            console.log(
-              "Sending immediate rejection email to admin:",
-              adminEmail
-            );
             await sendEmail(adminEmail, subject, html);
           }
         } catch (error) {
@@ -1146,9 +1105,6 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
 
     // Send email notification when meeting is fully approved
     if (newOverallStatus === BookingStatus.APPROVED) {
-      console.log(
-        "Meeting fully approved, preparing to send notification emails."
-      );
       // Get user and admin emails
       const meeting = await prisma.meeting.findUnique({
         where: { id },
@@ -1165,7 +1121,6 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
       });
 
       if (meeting) {
-        console.log("Meeting found for email notification:", meeting.id);
         // Use email from user data as receiver
         const userEmail = meeting.user?.email;
         const userName = meeting.user?.fullName || "User";
@@ -1182,20 +1137,16 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
 
         try {
           if (userEmail) {
-            console.log("Sending email to user:", userEmail);
             // Send email to user
             await sendEmail(userEmail, subject, html);
           }
           // Send email to admins
           for (const adminEmail of adminApprovers) {
-            console.log("Sending email to admin:", adminEmail);
             await sendEmail(adminEmail, subject, html);
           }
         } catch (error) {
           console.error("Failed to send final approval email:", error);
         }
-      } else {
-        console.error("Meeting not found for email notification.");
       }
     }
 
@@ -1332,9 +1283,6 @@ export const cancelMeeting = async (req: Request, res: Response) => {
         for (const recipient of notificationRecipients) {
           try {
             await sendEmail(recipient.email, subject, html);
-            console.log(
-              `Cancellation notification sent to ${recipient.email} (${recipient.role})`
-            );
           } catch (emailError) {
             console.error(
               "Failed to send cancellation email to",

@@ -677,101 +677,17 @@ export default function CalendarPage() {
   };
 
   const handleCreateSubmit = async () => {
-    // Validasi minimal
-    if (!createForm.departmentId) {
-      toast.error("Department wajib diisi");
-      return;
-    }
-    const startMoment = createForm.start ? moment(createForm.start) : null;
-    const endMoment = createForm.end ? moment(createForm.end) : null;
-    if (
-      !startMoment ||
-      !startMoment.isValid() ||
-      !endMoment ||
-      !endMoment.isValid()
-    ) {
-      toast.error("Waktu mulai/akhir tidak valid.");
-      return;
-    }
-    if (endMoment.isSameOrBefore(startMoment)) {
-      toast.error("End time harus setelah Start time.");
-      return;
-    }
+    // This function is now handled by the modal itself
+    // The modal will handle validation, API call, and toast notifications
+    // This function is kept for backward compatibility but is now empty
+    // The actual logic has been moved to AddScheduleModal component
+  };
 
-    const equipmentIds = createForm.equipment?.map((eq) => eq.id) || [];
-    const equipmentQuantities =
-      createForm.equipment?.map((eq) => eq.quantity) || [];
-
-    const payload = {
-      agenda: createForm.agenda,
-      isGenbaVisit: !!createForm.isGenbaVisit,
-      request: createForm.request,
-      gtimName: createForm.gtimName,
-      companyName: createForm.companyName,
-      visitorName: createForm.visitorName,
-      startDate: startMoment.format("YYYY-MM-DD"),
-      endDate: endMoment.format("YYYY-MM-DD"),
-      startTime: startMoment.format("HH:mm:ss"),
-      endTime: endMoment.format("HH:mm:ss"),
-      departmentId: createForm.departmentId,
-      meetingRoomId: createForm.meetingRoomId,
-      equipmentIds,
-      equipmentQuantities,
-    };
-
-    setLoading(true);
-    setError(null);
-
-    const token = getToken();
-    if (!token) {
-      toast.error("Token otentikasi tidak ditemukan.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/meetings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: buildAuth(token),
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          // Bentrok jadwal/ruangan atau peralatan
-          const msg =
-            typeof errData.message === "string" ? errData.message : "";
-          if (msg.toLowerCase().includes("ruang rapat")) {
-            toast.error(`Meeting Bentrok: ${msg}`);
-          } else if (
-            Array.isArray(errData.conflicts) &&
-            errData.conflicts.length
-          ) {
-            toast.error(` ${errData.conflicts.join("; ")}`);
-          } else {
-            toast.error(errData.message || "Meeting Bentrok");
-          }
-        } else {
-          toast.error(errData.message || "Meeting gagal dibuat");
-        }
-        return;
-      }
-
-      // Refresh event
-      await fetchEvents(selectedMeetingRoomId || "");
-      toast.success("Meeting berhasil dibuat");
-      setIsCreateOpen(false);
-      setCreateForm({});
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Meeting gagal dibuat");
-    } finally {
-      setLoading(false);
-    }
+  const handleCreateSuccess = async () => {
+    // Refresh events after successful creation
+    await fetchEvents(selectedMeetingRoomId || "");
+    setIsCreateOpen(false);
+    setCreateForm({});
   };
 
   // FUNGSI handleSave YANG LENGKAP DAN BENAR
@@ -1095,6 +1011,7 @@ export default function CalendarPage() {
         onChange={handleCreateChange}
         onEquipmentChange={handleCreateEquipmentChange}
         onSubmit={handleCreateSubmit}
+        onSuccess={handleCreateSuccess}
       />
 
       {/* Gunakan komponen modal yang sudah dipisah */}

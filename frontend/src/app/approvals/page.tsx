@@ -124,45 +124,10 @@ export default function ApprovalsPage() {
 
       // Filter for SECTION_HEAD to only show meetings from their department
       if (role === "SECTION_HEAD" && userDepartmentId) {
-        console.log(
-          "SECTION_HEAD filtering - userDepartmentId:",
-          userDepartmentId
-        );
-        console.log(
-          "Before department filter - meetings count:",
-          normalized.length
-        );
-        console.log("Sample meeting department:", normalized[0]?.department);
-        console.log(
-          "Sample meeting department ID:",
-          normalized[0]?.department?.id
-        );
-        console.log(
-          "Sample meeting department name:",
-          normalized[0]?.department?.name
-        );
-
         normalized = normalized.filter(
           (m) => m.department?.id === userDepartmentId
         );
-
-        console.log(
-          "After department filter - meetings count:",
-          normalized.length
-        );
       }
-
-      console.log("Final meetings to display:", normalized.length);
-      console.log(
-        "All meetings with status:",
-        normalized.map((m) => ({
-          id: m.id,
-          agenda: m.agenda,
-          status: m.overallStatus,
-          departmentId: m.department?.id,
-          departmentName: m.department?.name,
-        }))
-      );
 
       setItems(normalized);
     } catch (e) {
@@ -285,29 +250,12 @@ export default function ApprovalsPage() {
   };
 
   const filteredItems = items.filter((m) => {
-    if (
-      role === "ADMIN" ||
-      role === "HRGA_MANAGER" ||
-      role === "SECTION_HEAD"
-    ) {
-      const allowedStatuses = ["PENDING", "PARTIALLY_APPROVED", "REJECTED"];
-      const isAllowed = allowedStatuses.includes(m.overallStatus || "");
-      console.log(
-        `Meeting ${m.id} - Status: "${m.overallStatus}" - Allowed: ${isAllowed}`
-      );
-      return isAllowed;
-    } else {
-      const allowedStatuses = ["PENDING", "REJECTED"];
-      const isAllowed = allowedStatuses.includes(m.overallStatus || "");
-      console.log(
-        `Meeting ${m.id} - Status: "${m.overallStatus}" - Allowed: ${isAllowed}`
-      );
-      return isAllowed;
-    }
+    // Only show meetings that are still pending approval
+    // Exclude APPROVED and REJECTED meetings automatically
+    const allowedStatuses = ["PENDING", "PARTIALLY_APPROVED"];
+    const isAllowed = allowedStatuses.includes(m.overallStatus || "");
+    return isAllowed;
   });
-
-  console.log("After status filter - meetings count:", filteredItems.length);
-  console.log("Sample filtered meeting:", filteredItems[0]);
 
   const finalFilteredItems = filteredItems.filter((m) => {
     const needle = searchText.trim().toLowerCase();
@@ -354,13 +302,6 @@ export default function ApprovalsPage() {
 
     return haystack.includes(needle);
   });
-
-  console.log(
-    "After search filter - meetings count:",
-    finalFilteredItems.length
-  );
-  console.log("Search text:", searchText);
-  console.log("Date filters - from:", fromDate, "to:", toDate);
 
   return (
     <Layout>
@@ -461,30 +402,6 @@ export default function ApprovalsPage() {
           </div>
         ) : (
           <>
-            {/* Debug info */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-sm text-blue-800">
-                <strong>Debug Info:</strong> Rendering{" "}
-                {finalFilteredItems.length} meetings
-              </p>
-              <details className="mt-2">
-                <summary className="text-xs cursor-pointer">
-                  Show meeting details
-                </summary>
-                <pre className="text-xs mt-2 overflow-auto">
-                  {JSON.stringify(
-                    finalFilteredItems.map((m) => ({
-                      id: m.id,
-                      agenda: m.agenda,
-                      status: m.overallStatus,
-                      department: m.department?.name,
-                    })),
-                    null,
-                    2
-                  )}
-                </pre>
-              </details>
-            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full border border-gray-200">
                 <thead className="bg-gray-50">

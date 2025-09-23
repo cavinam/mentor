@@ -3,6 +3,8 @@ import moment from "moment";
 import toast from "react-hot-toast";
 import { CalendarEvent, Department, MeetingRoom } from "@/types/calendar";
 import EquipmentSelector from "../common/EquipmentSelector";
+import { getToken } from "../../lib/auth";
+import { getApiBase } from "../../lib/apiBase";
 
 export interface AddScheduleModalProps {
   isOpen: boolean;
@@ -24,6 +26,7 @@ export interface AddScheduleModalProps {
   ) => void;
   onEquipmentChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: () => void;
+  onSuccess?: () => void; // Callback for successful submission
 }
 
 export default function AddScheduleModal({
@@ -37,10 +40,12 @@ export default function AddScheduleModal({
   onChange,
   onEquipmentChange,
   onSubmit,
+  onSuccess,
 }: AddScheduleModalProps) {
   const [selectedEquipments, setSelectedEquipments] = useState<string[]>(
     formData.equipment?.map((eq) => eq.id) || [""]
   );
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,7 +77,8 @@ export default function AddScheduleModal({
     } as any);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    // Validasi minimal
     if (!formData.departmentId) {
       toast.error("Department wajib diisi");
       return;
@@ -93,17 +99,104 @@ export default function AddScheduleModal({
       toast.error("Meeting room wajib diisi (kecuali Genba)");
       return;
     }
-    if (!formData.start || !formData.end) {
-      toast.error("Waktu mulai dan akhir wajib diisi");
+    const startMoment = formData.start ? moment(formData.start) : null;
+    const endMoment = formData.end ? moment(formData.end) : null;
+    if (
+      !startMoment ||
+      !startMoment.isValid() ||
+      !endMoment ||
+      !endMoment.isValid()
+    ) {
+      toast.error("Waktu mulai/akhir tidak valid.");
       return;
     }
-    if (moment(formData.end).isSameOrBefore(moment(formData.start))) {
-      toast.error("End time harus setelah Start time");
+    if (endMoment.isSameOrBefore(startMoment)) {
+      toast.error("End time harus setelah Start time.");
       return;
     }
 
-    // Call the actual submit function from parent component
-    onSubmit();
+    const equipmentIds = formData.equipment?.map((eq) => eq.id) || [];
+    const equipmentQuantities =
+      formData.equipment?.map((eq) => eq.quantity) || [];
+
+    const payload = {
+      agenda: formData.agenda,
+      isGenbaVisit: !!formData.isGenbaVisit,
+      request: formData.request,
+      gtimName: formData.gtimName,
+      companyName: formData.companyName,
+      visitorName: formData.visitorName,
+      startDate: startMoment.format("YYYY-MM-DD"),
+      endDate: endMoment.format("YYYY-MM-DD"),
+      startTime: startMoment.format("HH:mm:ss"),
+      endTime: endMoment.format("HH:mm:ss"),
+      departmentId: formData.departmentId,
+      meetingRoomId: formData.meetingRoomId,
+      equipmentIds,
+      equipmentQuantities,
+    };
+
+    setIsLoading(true);
+
+    const token = getToken();
+    if (!token) {
+      toast.error("Token otentikasi tidak ditemukan.");
+      setIsLoading(false);
+      return;
+    }
+
+    const API_BASE_URL = getApiBase();
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/meetings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          // Bentrok jadwal/ruangan atau peralatan
+          const msg =
+            typeof errData.message === "string" ? errData.message : "";
+          if (msg.toLowerCase().includes("ruang rapat")) {
+            toast.error(`Meeting Bentrok: ${msg}`);
+          } else if (
+            Array.isArray(errData.conflicts) &&
+            errData.conflicts.length
+          ) {
+            toast.error(` ${errData.conflicts.join("; ")}`);
+          } else {
+            toast.error(errData.message || "Meeting Bentrok");
+          }
+        } else {
+          toast.error(errData.message || "Meeting gagal dibuat");
+        }
+        return;
+      }
+
+      // Success - show toast in modal
+      toast.success("Meeting berhasil dibuat");
+
+      // Call success callback to refresh parent data
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Close modal after success
+      setTimeout(() => {
+        onClose();
+      }, 1000); // Small delay to show success toast
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Meeting gagal dibuat");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -320,13 +413,15 @@ export default function AddScheduleModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={handleSubmit}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create
+            {isLoading ? "Creating..." : "Create"}
           </button>
           <button
             onClick={onClose}
-            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+            disabled={isLoading}
+            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
