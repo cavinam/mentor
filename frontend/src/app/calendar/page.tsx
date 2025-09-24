@@ -789,7 +789,7 @@ export default function CalendarPage() {
       return;
     }
 
-    // Validasi semua field kecuali genba visit, equipment, dan request
+    // Validasi field wajib - meetingRoomId hanya wajib jika bukan Genba Visit
     const requiredFields = [
       "agenda",
       "gtimName",
@@ -798,8 +798,12 @@ export default function CalendarPage() {
       "start",
       "end",
       "departmentId",
-      "meetingRoomId",
     ];
+
+    // Tambahkan meetingRoomId ke validasi hanya jika bukan Genba Visit
+    if (!formData.isGenbaVisit) {
+      requiredFields.push("meetingRoomId");
+    }
 
     for (const field of requiredFields) {
       const value = (formData as Record<string, unknown>)[field];
@@ -1123,6 +1127,7 @@ export default function CalendarPage() {
         hydrateIdsFromNames={hydrateIdsFromNames}
         handleEquipmentChange={handleEquipmentChange}
         handleEquipmentSelectChange={handleEditEquipmentSelectChange}
+        isSaving={loading}
       />
     </Layout>
   );

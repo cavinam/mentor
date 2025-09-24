@@ -99,6 +99,9 @@ export default function ApprovalsPage() {
     undefined
   );
 
+  // Track loading state for each meeting to prevent multiple clicks
+  const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
+
   const showNotice = (
     message: string,
     type: "success" | "error" | "warning" = "success"
@@ -159,6 +162,14 @@ export default function ApprovalsPage() {
     status: "APPROVED" | "REJECTED",
     remark?: string
   ) => {
+    // Prevent multiple clicks by checking if already loading
+    if (loadingActions.has(meetingId)) {
+      return;
+    }
+
+    // Add to loading state
+    setLoadingActions((prev) => new Set(prev).add(meetingId));
+
     try {
       const token = getToken();
       if (!token) {
@@ -200,6 +211,13 @@ export default function ApprovalsPage() {
     } catch (e) {
       console.error(e);
       showNotice("Terjadi kesalahan pada proses approval.", "error");
+    } finally {
+      // Remove from loading state
+      setLoadingActions((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(meetingId);
+        return newSet;
+      });
     }
   };
 
@@ -474,7 +492,8 @@ export default function ApprovalsPage() {
                     });
                     const disableActions =
                       m.overallStatus === "APPROVED" ||
-                      m.overallStatus === "REJECTED";
+                      m.overallStatus === "REJECTED" ||
+                      loadingActions.has(m.id);
                     return (
                       <tr key={m.id} className="border-b hover:bg-gray-50">
                         <td className="px-3 py-2 text-sm text-gray-800">
@@ -560,7 +579,9 @@ export default function ApprovalsPage() {
                               disabled={disableActions}
                               title="Setujui"
                             >
-                              Approve
+                              {loadingActions.has(m.id)
+                                ? "Processing..."
+                                : "Approve"}
                             </button>
                             <button
                               onClick={() => handleRejectClick(m.id)}
@@ -572,7 +593,9 @@ export default function ApprovalsPage() {
                               disabled={disableActions}
                               title="Tolak"
                             >
-                              Reject
+                              {loadingActions.has(m.id)
+                                ? "Processing..."
+                                : "Reject"}
                             </button>
                           </div>
                         </td>
@@ -597,6 +620,9 @@ export default function ApprovalsPage() {
           }}
           remark={rejectRemark}
           setRemark={setRejectRemark}
+          isLoading={
+            rejectMeetingId ? loadingActions.has(rejectMeetingId) : false
+          }
         />
       </div>
     </Layout>
