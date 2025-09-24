@@ -70,12 +70,34 @@ export default function MeetingDetailModal({
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
-    handleChange({
+
+    // Create a synthetic event object that matches the expected type
+    const syntheticEvent = {
       target: {
         name,
         value: checked,
+        type: "checkbox",
+        checked,
+        files: null,
+        options: null,
       },
-    } as any);
+      currentTarget: e.currentTarget,
+      bubbles: false,
+      cancelable: false,
+      defaultPrevented: false,
+      eventPhase: 0,
+      isDefaultPrevented: () => false,
+      isPropagationStopped: () => false,
+      isTrusted: false,
+      nativeEvent: e.nativeEvent,
+      persist: () => {},
+      preventDefault: () => {},
+      stopPropagation: () => {},
+      timeStamp: Date.now(),
+      type: "change",
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+
+    handleChange(syntheticEvent);
   };
 
   if (!isModalOpen) return null;
@@ -106,8 +128,8 @@ export default function MeetingDetailModal({
                 <div className="ml-3">
                   <p className="text-sm font-medium">
                     <strong>Perhatian:</strong> Mengubah waktu/tanggal meeting
-                    yang sudah disetujui akan mengubah status menjadi "Pending"
-                    dan memerlukan persetujuan ulang.
+                    yang sudah disetujui akan mengubah status menjadi
+                    &ldquo;Pending&rdquo; dan memerlukan persetujuan ulang.
                   </p>
                 </div>
               </div>

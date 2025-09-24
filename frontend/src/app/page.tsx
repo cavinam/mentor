@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../components/AuthContext";
 import { getToken } from "../lib/auth";
@@ -33,7 +33,14 @@ const API_BASE_URL = getApiBase();
 const buildAuth = (token: string) =>
   token && token.startsWith("Bearer ") ? token : `Bearer ${token}`;
 
-function parseJwt(token: string): any | null {
+type JwtPayload = {
+  role?: string;
+  exp?: number;
+  iat?: number;
+  [key: string]: unknown;
+};
+
+function parseJwt(token: string): JwtPayload | null {
   try {
     const base64Url = token.split(".")[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -43,7 +50,7 @@ function parseJwt(token: string): any | null {
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
         .join("")
     );
-    return JSON.parse(jsonPayload);
+    return JSON.parse(jsonPayload) as JwtPayload;
   } catch {
     return null;
   }
@@ -68,7 +75,7 @@ export default function Home() {
   const [showPending, setShowPending] = useState(false);
   const [showToday, setShowToday] = useState(false);
 
-  const fetchMeetings = async (adminView: boolean) => {
+  const fetchMeetings = useCallback(async (adminView: boolean) => {
     setLoading(true);
     setError(null);
     try {
@@ -89,19 +96,20 @@ export default function Home() {
         setMeetings([]);
         return;
       }
-      const data = (await res.json()) as any[];
-      const normalized: MeetingRow[] = (data || []).map((m) => ({
+      const data = (await res.json()) as MeetingRow[];
+      const normalized: MeetingRow[] = (data || []).map((m: MeetingRow) => ({
         ...m,
         id: String(m.id),
       }));
       setMeetings(normalized);
-    } catch (e: any) {
-      setError(e?.message || "Terjadi kesalahan saat memuat data.");
+    } catch (e: unknown) {
+      const error = e as Error;
+      setError(error?.message || "Terjadi kesalahan saat memuat data.");
       setMeetings([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!isAuthReady || !isLoggedIn) return;
@@ -111,8 +119,7 @@ export default function Home() {
     setRole(r);
     const adminView = isAdminish(r);
     fetchMeetings(adminView);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthReady, isLoggedIn]);
+  }, [isAuthReady, isLoggedIn, fetchMeetings]);
 
   // Lists for tables
   const pendingList = useMemo(
@@ -123,8 +130,8 @@ export default function Home() {
   const todayList = useMemo(() => {
     const today = moment().format("YYYY-MM-DD");
     return meetings.filter((m) => {
-      const mStart = getDateOnly(m.startDate as any);
-      const mEnd = getDateOnly(m.endDate as any) || mStart;
+      const mStart = getDateOnly(m.startDate);
+      const mEnd = getDateOnly(m.endDate) || mStart;
       return mStart <= today && mEnd >= today;
     });
   }, [meetings]);
@@ -149,8 +156,8 @@ export default function Home() {
 
     meetings.forEach((m) => {
       if (m.overallStatus === "PENDING") pending += 1;
-      const mStart = getDateOnly(m.startDate as any);
-      const mEnd = getDateOnly(m.endDate as any) || mStart;
+      const mStart = getDateOnly(m.startDate);
+      const mEnd = getDateOnly(m.endDate) || mStart;
       if (mStart <= today && mEnd >= today) {
         todayMeetings += 1;
       }

@@ -7,8 +7,13 @@ import { useAuth } from "../../components/AuthContext";
 import { getToken } from "../../lib/auth";
 import { getApiBase } from "../../lib/apiBase";
 import RejectRemarkModal from "@/components/RejectRemarkModal";
-import { ApiMeeting, MeetingStatus, UserRole } from "@/types/api";
-import { CalendarEvent } from "@/types/calendar";
+import { ApiMeeting, MeetingStatus } from "@/types/api";
+
+// Define a type for the approval request body
+type ApprovalRequestBody = {
+  status: "APPROVED" | "REJECTED";
+  remark: string;
+};
 
 type PendingApprovalMeeting = {
   id: string;
@@ -160,7 +165,7 @@ export default function ApprovalsPage() {
         showNotice("Token otentikasi tidak ditemukan.", "error");
         return;
       }
-      const body: any = { status, remark: remark || "" };
+      const body: ApprovalRequestBody = { status, remark: remark || "" };
       const res = await fetch(
         `${API_BASE_URL}/api/meetings/${meetingId}/approve`,
         {
@@ -213,8 +218,12 @@ export default function ApprovalsPage() {
         cache: "no-store",
       });
       if (!res.ok) return;
-      const updated = await res.json();
-      const normalized = { ...updated, id: String(updated.id) };
+      const updated = (await res.json()) as ApiMeeting;
+      const normalized: PendingApprovalMeeting = {
+        ...updated,
+        id: String(updated.id),
+        overallStatus: updated.overallStatus as MeetingStatus,
+      };
       setItems((prev) =>
         prev.some((m) => m.id === String(meetingId))
           ? prev.map((m) => (m.id === String(meetingId) ? normalized : m))
@@ -249,8 +258,8 @@ export default function ApprovalsPage() {
       const combined = moment(`${d} ${t}`, "YYYY-MM-DD HH:mm:ss");
       return combined.isValid() ? combined.format("DD MMM YYYY, HH:mm") : "-";
     };
-    const start = toDisplay(m.startDate as any, m.startTime as any);
-    const end = toDisplay(m.endDate as any, m.endTime as any);
+    const start = toDisplay(m.startDate, m.startTime);
+    const end = toDisplay(m.endDate, m.endTime);
     return `${start} - ${end}`;
   };
 
@@ -272,8 +281,8 @@ export default function ApprovalsPage() {
     const needle = searchText.trim().toLowerCase();
 
     // Date range overlap: meeting [start,end] overlaps filter [from,to]
-    const mStart = getDateOnly(m.startDate as any);
-    const mEnd = getDateOnly(m.endDate as any) || mStart;
+    const mStart = getDateOnly(m.startDate);
+    const mEnd = getDateOnly(m.endDate) || mStart;
     const from = fromDate;
     const to = toDate;
 

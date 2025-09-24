@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Layout from "../../components/Layout";
-import { Calendar, momentLocalizer } from "react-big-calendar";
+import {
+  Calendar,
+  momentLocalizer,
+  DateLocalizer,
+  View,
+} from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { getToken } from "../../lib/auth";
@@ -23,28 +28,34 @@ const scrollToTimeDefault = new Date(1970, 0, 1, 7, 0, 0); // scroll awal: 07:00
 
 // Force 24-hour time display in calendar
 const formats = {
-  timeGutterFormat: (date: Date, culture: any, loc: any) =>
-    loc.format(date, "HH:mm", culture),
+  timeGutterFormat: (
+    date: Date,
+    culture: string | undefined,
+    localizer?: DateLocalizer
+  ) =>
+    localizer?.format(date, "HH:mm", culture) || moment(date).format("HH:mm"),
   eventTimeRangeFormat: (
     { start, end }: { start: Date; end: Date },
-    culture: any,
-    loc: any
+    culture: string | undefined,
+    localizer?: DateLocalizer
   ) =>
-    `${loc.format(start, "HH:mm", culture)} – ${loc.format(
-      end,
-      "HH:mm",
-      culture
-    )}`,
+    `${
+      localizer?.format(start, "HH:mm", culture) ||
+      moment(start).format("HH:mm")
+    } – ${
+      localizer?.format(end, "HH:mm", culture) || moment(end).format("HH:mm")
+    }`,
   agendaTimeRangeFormat: (
     { start, end }: { start: Date; end: Date },
-    culture: any,
-    loc: any
+    culture: string | undefined,
+    localizer?: DateLocalizer
   ) =>
-    `${loc.format(start, "HH:mm", culture)} – ${loc.format(
-      end,
-      "HH:mm",
-      culture
-    )}`,
+    `${
+      localizer?.format(start, "HH:mm", culture) ||
+      moment(start).format("HH:mm")
+    } – ${
+      localizer?.format(end, "HH:mm", culture) || moment(end).format("HH:mm")
+    }`,
 };
 
 // Pastikan header Authorization selalu benar: tidak dobel "Bearer "
@@ -73,7 +84,7 @@ export default function CalendarPage() {
   const [selectedMeetingRoomId, setSelectedMeetingRoomId] = useState<
     string | null
   >(null);
-  const [view, setView] = useState("month");
+  const [view, setView] = useState<View>("month");
   const [date, setDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -103,7 +114,6 @@ export default function CalendarPage() {
 
   // --- logged in user's department (for auto-fill)
   const [currentUserDeptId, setCurrentUserDeptId] = useState<string>("");
-  const [currentUserDeptName, setCurrentUserDeptName] = useState<string>("");
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
 
   // ====== Fetch master data ======
@@ -113,7 +123,6 @@ export default function CalendarPage() {
     fetchDepartments();
     fetchMeetingRooms();
     fetchEquipment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthReady, isLoggedIn]);
 
   const fetchProfile = async () => {
@@ -129,12 +138,10 @@ export default function CalendarPage() {
       }
       const data = await res.json();
       const depId = data?.departmentId ?? data?.department?.id ?? "";
-      const depName = data?.department?.name ?? "";
       const role = data?.role ?? "";
       setCurrentUserDeptId(depId ? String(depId) : "");
-      setCurrentUserDeptName(depName ? String(depName) : "");
       setCurrentUserRole(role);
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -177,15 +184,21 @@ export default function CalendarPage() {
       });
       if (!response.ok) throw new Error("Gagal mengambil daftar ruang rapat.");
       const data = await response.json();
-      const normalized = (data || []).map((r: any) => ({
-        id: String(r.id),
-        name: r.name,
-      }));
+      const normalized = (data || []).map(
+        (r: { id: string | number; name: string }) => ({
+          id: String(r.id),
+          name: r.name,
+        })
+      );
       setMeetingRooms(normalized);
       // Default: tampilkan semua ruang (tidak memilih room tertentu)
       // Jangan set selectedMeetingRoomId ke room pertama
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat mengambil data.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat mengambil data."
+      );
     } finally {
       setLoading(false);
     }
@@ -213,10 +226,17 @@ export default function CalendarPage() {
         throw new Error("Gagal mengambil daftar equipment.");
       }
       const data = await response.json();
-      setEquipmentList(data.map((d: any) => ({ id: d.id, name: d.name })));
-    } catch (err: any) {
+      setEquipmentList(
+        data.map((d: { id: string; name: string }) => ({
+          id: d.id,
+          name: d.name,
+        }))
+      );
+    } catch (err) {
       setError(
-        err.message || "Terjadi kesalahan saat mengambil data equipment."
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat mengambil data equipment."
       );
     } finally {
       setLoading(false);
@@ -254,8 +274,17 @@ export default function CalendarPage() {
       });
       if (!res.ok) return [];
       const data = await res.json();
-      const unavailableIds = (data as any[])
-        .filter((x) => x.unavailable || x.remaining <= 0)
+      const unavailableIds = (
+        data as {
+          id: string | number;
+          unavailable?: boolean;
+          remaining?: number;
+        }[]
+      )
+        .filter(
+          (x) =>
+            x.unavailable || (x.remaining !== undefined && x.remaining <= 0)
+        )
         .map((x) => String(x.id));
       return unavailableIds;
     } catch {
@@ -274,7 +303,6 @@ export default function CalendarPage() {
       );
       setCreateEquipUnavailableIds(unavail);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateOpen, createForm.start, createForm.end]);
 
   // Auto-load availability for Edit modal when time changes
@@ -290,14 +318,12 @@ export default function CalendarPage() {
       );
       setEditEquipUnavailableIds(unavail);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isModalOpen, formData.start, formData.end, formData.id]);
 
   // ====== Fetch events ======
   useEffect(() => {
     if (!isAuthReady || !isLoggedIn) return;
     fetchEvents(selectedMeetingRoomId || "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedMeetingRoomId,
     isAuthReady,
@@ -355,7 +381,41 @@ export default function CalendarPage() {
       if (!response.ok) throw new Error("Gagal mengambil data kalender.");
       const data = await response.json();
 
-      const formattedEvents: CalendarEvent[] = (data as any[])
+      const formattedEvents: CalendarEvent[] = (
+        data as {
+          id: string | number;
+          title?: string;
+          agenda?: string;
+          startDate?: string;
+          startTime?: string;
+          start?: string;
+          endDate?: string;
+          endTime?: string;
+          end?: string;
+          status?: string;
+          overallStatus?: string;
+          userName?: string;
+          user?: { fullName?: string };
+          departmentId?: string | number;
+          department?: { id?: string | number; name?: string };
+          departmentName?: string;
+          meetingRoomId?: string | number;
+          meetingRoom?: { id?: string | number; name?: string };
+          meetingRoomName?: string;
+          gtimName?: string;
+          visitorName?: string;
+          companyName?: string;
+          request?: string;
+          equipment?: { id: string; name: string; quantity: number }[];
+          meetingEquipments?: {
+            equipment?: { id?: string; name?: string };
+            quantity: number;
+          }[];
+          isGenbaVisit?: boolean;
+          createdAt?: string;
+          updatedAt?: string;
+        }[]
+      )
         .map((event) => {
           // 🔹 Gunakan parseEventTime untuk handle dua kemungkinan
           const start = parseEventTime(
@@ -402,13 +462,18 @@ export default function CalendarPage() {
             equipment:
               event.equipment ??
               (event.meetingEquipments
-                ? event.meetingEquipments.map((me: any) => ({
-                    id: me.equipment?.id
-                      ? String(me.equipment?.id)
-                      : me.equipment?.id,
-                    name: me.equipment?.name,
-                    quantity: me.quantity,
-                  }))
+                ? event.meetingEquipments.map(
+                    (me: {
+                      equipment?: { id?: string; name?: string };
+                      quantity: number;
+                    }) => ({
+                      id: me.equipment?.id
+                        ? String(me.equipment?.id)
+                        : me.equipment?.id,
+                      name: me.equipment?.name,
+                      quantity: me.quantity,
+                    })
+                  )
                 : []),
             isGenbaVisit: event.isGenbaVisit,
             createdAt: event.createdAt,
@@ -417,7 +482,7 @@ export default function CalendarPage() {
         })
         .filter(Boolean) as CalendarEvent[];
 
-      let filtered = _meetingRoomId
+      const filtered = _meetingRoomId
         ? formattedEvents.filter((ev) => ev.meetingRoomId === _meetingRoomId)
         : formattedEvents;
 
@@ -430,8 +495,12 @@ export default function CalendarPage() {
       );
 
       setEvents(filtered);
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat mengambil data.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat mengambil data."
+      );
     } finally {
       setLoading(false);
     }
@@ -440,7 +509,7 @@ export default function CalendarPage() {
   // ====== Helpers ======
   const hydrateIdsFromNames = useCallback(
     (prev: Partial<CalendarEvent>) => {
-      let next = { ...prev };
+      const next = { ...prev };
 
       if (!next.departmentId && next.departmentName) {
         const dep = departments.find(
@@ -476,7 +545,7 @@ export default function CalendarPage() {
 
   // ====== Handlers ======
   const handleMeetingRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedMeetingRoomId(e.target.value);
+    setSelectedMeetingRoomId(e.target.value || null);
   };
 
   const handleSelectEvent = (event: CalendarEvent) => {
@@ -484,10 +553,38 @@ export default function CalendarPage() {
     const withIds = hydrateIdsFromNames(event);
 
     // Jika backend mengirim field mentah, gunakan untuk membentuk waktu persis di form
-    const rawStartDate = (event as any).rawStartDate as string | undefined;
-    const rawStartTime = (event as any).rawStartTime as string | undefined;
-    const rawEndDate = (event as any).rawEndDate as string | undefined;
-    const rawEndTime = (event as any).rawEndTime as string | undefined;
+    const rawStartDate = (
+      event as CalendarEvent & {
+        rawStartDate?: string;
+        rawStartTime?: string;
+        rawEndDate?: string;
+        rawEndTime?: string;
+      }
+    ).rawStartDate;
+    const rawStartTime = (
+      event as CalendarEvent & {
+        rawStartDate?: string;
+        rawStartTime?: string;
+        rawEndDate?: string;
+        rawEndTime?: string;
+      }
+    ).rawStartTime;
+    const rawEndDate = (
+      event as CalendarEvent & {
+        rawStartDate?: string;
+        rawStartTime?: string;
+        rawEndDate?: string;
+        rawEndTime?: string;
+      }
+    ).rawEndDate;
+    const rawEndTime = (
+      event as CalendarEvent & {
+        rawStartDate?: string;
+        rawStartTime?: string;
+        rawEndDate?: string;
+        rawEndTime?: string;
+      }
+    ).rawEndTime;
 
     const preciseStart =
       rawStartDate && rawStartTime
@@ -521,7 +618,7 @@ export default function CalendarPage() {
   };
 
   const handleNavigate = (newDate: Date) => setDate(newDate);
-  const handleView = (newView: any) => setView(newView);
+  const handleView = (newView: View) => setView(newView);
 
   const handleSelectSlot = ({ start, end }: { start: Date; end: Date }) => {
     // Prefill create form dengan slot terpilih + auto-fill department dari user
@@ -538,7 +635,12 @@ export default function CalendarPage() {
           meetingRoomId: selectedMeetingRoomId || prev.meetingRoomId,
           departmentId:
             prev.departmentId || currentUserDeptId || prev.departmentId,
-        } as any)
+        } as Partial<
+          CalendarEvent & {
+            equipment: { id: string; name: string; quantity: number }[];
+            isGenbaVisit?: boolean;
+          }
+        >)
     );
     setIsCreateOpen(true);
   };
@@ -659,6 +761,7 @@ export default function CalendarPage() {
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const { value, checked } = e.target;
+    if (!checked) return;
     setCreateForm((prev) => {
       const list = prev.equipment ?? [];
       if (checked) {
@@ -676,18 +779,20 @@ export default function CalendarPage() {
     });
   };
 
-  const handleCreateSubmit = async () => {
-    // This function is now handled by the modal itself
-    // The modal will handle validation, API call, and toast notifications
-    // This function is kept for backward compatibility but is now empty
-    // The actual logic has been moved to AddScheduleModal component
-  };
+  // const handleCreateSubmit = async () => {
+  //   // This function is now handled by the modal itself
+  //   // The modal will handle validation, API call, and toast notifications
+  //   // This function is kept for backward compatibility but is now empty
+  //   // The actual logic has been moved to AddScheduleModal component
+  //   return Promise.resolve();
+  // };
 
   const handleCreateSuccess = async () => {
     // Refresh events after successful creation
     await fetchEvents(selectedMeetingRoomId || "");
     setIsCreateOpen(false);
     setCreateForm({});
+    return Promise.resolve();
   };
 
   // FUNGSI handleSave YANG LENGKAP DAN BENAR
@@ -710,7 +815,7 @@ export default function CalendarPage() {
     ];
 
     for (const field of requiredFields) {
-      const value = (formData as any)[field];
+      const value = (formData as Record<string, unknown>)[field];
       if (
         value === undefined ||
         value === null ||
@@ -827,10 +932,10 @@ export default function CalendarPage() {
       closeModal();
       console.log("Data berhasil diperbarui:", updatedEvent);
     } catch (err) {
-      let errorMessage = "Terjadi kesalahan saat menyimpan data.";
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      }
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat menyimpan data.";
       toast.error(errorMessage);
       console.error("Error dalam handleSave:", err);
     } finally {
@@ -839,7 +944,7 @@ export default function CalendarPage() {
   };
 
   // Legacy checkbox handler (kept for compatibility, unused by new UI)
-  const handleEquipmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEquipmentChange = (_e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isEditing) return;
   };
 
@@ -847,11 +952,10 @@ export default function CalendarPage() {
   const handleEditEquipmentSelectChange = (ids: string[]) => {
     if (!isEditing) return;
     setFormData((prev) => {
-      const mapped =
-        ids.map((id) => {
-          const found = equipmentList.find((eq) => eq.id === id);
-          return { id, name: found?.name || "", quantity: 1 };
-        }) || [];
+      const mapped = ids.map((id) => {
+        const found = equipmentList.find((eq) => eq.id === id);
+        return { id, name: found?.name || "", quantity: 1 };
+      });
       return { ...prev, equipment: mapped };
     });
   };
@@ -860,7 +964,8 @@ export default function CalendarPage() {
   const filteredEvents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return events;
-    const includes = (v?: any) => !!v && String(v).toLowerCase().includes(q);
+    const includes = (v?: string | number | Date) =>
+      !!v && String(v).toLowerCase().includes(q);
     return events.filter((ev) => {
       return (
         includes(ev.title) ||
@@ -990,10 +1095,10 @@ export default function CalendarPage() {
           allDayAccessor={(event) => event.allDay || false}
           style={{ height: 600 }}
           onSelectEvent={handleSelectEvent}
-          onSelectSlot={handleSelectSlot as any}
+          onSelectSlot={handleSelectSlot}
           className="rounded-lg shadow-inner"
           date={date}
-          view={view as any}
+          view={view}
           onNavigate={handleNavigate}
           onView={handleView}
         />
@@ -1009,8 +1114,6 @@ export default function CalendarPage() {
         equipmentUnavailableIds={createEquipUnavailableIds}
         onClose={() => setIsCreateOpen(false)}
         onChange={handleCreateChange}
-        onEquipmentChange={handleCreateEquipmentChange}
-        onSubmit={handleCreateSubmit}
         onSuccess={handleCreateSuccess}
       />
 

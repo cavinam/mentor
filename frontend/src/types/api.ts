@@ -60,7 +60,7 @@ export interface MeetingFormData {
 }
 
 // Event handler types
-export interface ChangeEvent<T = Element> {
+export interface ChangeEvent {
   target: {
     name: string;
     value: string | boolean | number;

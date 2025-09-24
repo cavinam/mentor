@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Layout from "../../components/Layout";
 import moment from "moment";
 import { useAuth } from "../../components/AuthContext";
@@ -367,63 +367,68 @@ export default function ManageMeetingsPage() {
   const adminView = isAdminish(role);
   const showDepartmentFilter = adminView;
 
-  const convertToCalendarEvent = (m: MeetingRow): CalendarEvent => {
-    const start = moment(
-      `${m.startDate} ${
-        m.startTime.length === 5 ? m.startTime + ":00" : m.startTime
-      }`,
-      "YYYY-MM-DD HH:mm:ss"
-    ).toDate();
-    const end = moment(
-      `${m.endDate} ${m.endTime.length === 5 ? m.endTime + ":00" : m.endTime}`,
-      "YYYY-MM-DD HH:mm:ss"
-    ).toDate();
+  const convertToCalendarEvent = useCallback(
+    (m: MeetingRow): CalendarEvent => {
+      const start = moment(
+        `${m.startDate} ${
+          m.startTime.length === 5 ? m.startTime + ":00" : m.startTime
+        }`,
+        "YYYY-MM-DD HH:mm:ss"
+      ).toDate();
+      const end = moment(
+        `${m.endDate} ${
+          m.endTime.length === 5 ? m.endTime + ":00" : m.endTime
+        }`,
+        "YYYY-MM-DD HH:mm:ss"
+      ).toDate();
 
-    // Find matching meeting room from meetingRooms state by id
-    const matchedMeetingRoom = meetingRooms.find(
-      (room) => room.id === String(m.meetingRoom?.id)
-    );
-
-    // Map equipment ids to match equipmentList ids if possible
-    const mappedEquipment = (m.meetingEquipments || []).map((me) => {
-      // Try to find equipment in equipmentList by name or id
-      const matchedEquip = equipmentList.find(
-        (eq) => eq.id === me.equipment?.name || eq.name === me.equipment?.name
+      // Find matching meeting room from meetingRooms state by id
+      const matchedMeetingRoom = meetingRooms.find(
+        (room) => room.id === String(m.meetingRoom?.id)
       );
-      return {
-        id: matchedEquip ? matchedEquip.id : me.equipment?.name || "",
-        name: matchedEquip ? matchedEquip.name : me.equipment?.name || "",
-        quantity: me.quantity || 1,
-      };
-    });
 
-    return {
-      id: String(m.id),
-      title: m.agenda || "Untitled Meeting",
-      agenda: m.agenda,
-      start,
-      end,
-      status: m.overallStatus,
-      departmentId: m.department?.id,
-      departmentName: m.department?.name,
-      meetingRoomId: matchedMeetingRoom
-        ? matchedMeetingRoom.id
-        : m.meetingRoom?.id
-        ? String(m.meetingRoom.id)
-        : "",
-      meetingRoomName: matchedMeetingRoom
-        ? matchedMeetingRoom.name
-        : m.meetingRoom?.name,
-      userName: m.user?.fullName,
-      gtimName: m.gtimName,
-      visitorName: m.visitorName,
-      companyName: m.companyName,
-      request: m.request,
-      equipment: mappedEquipment,
-      createdAt: m.createdAt,
-      isGenbaVisit: !m.meetingRoom,
-    };
-  };
+      // Map equipment ids to match equipmentList ids if possible
+      const mappedEquipment = (m.meetingEquipments || []).map((me) => {
+        // Try to find equipment in equipmentList by name or id
+        const matchedEquip = equipmentList.find(
+          (eq) => eq.id === me.equipment?.name || eq.name === me.equipment?.name
+        );
+        return {
+          id: matchedEquip ? matchedEquip.id : me.equipment?.name || "",
+          name: matchedEquip ? matchedEquip.name : me.equipment?.name || "",
+          quantity: me.quantity || 1,
+        };
+      });
+
+      return {
+        id: String(m.id),
+        title: m.agenda || "Untitled Meeting",
+        agenda: m.agenda,
+        start,
+        end,
+        status: m.overallStatus,
+        departmentId: m.department?.id,
+        departmentName: m.department?.name,
+        meetingRoomId: matchedMeetingRoom
+          ? matchedMeetingRoom.id
+          : m.meetingRoom?.id
+          ? String(m.meetingRoom.id)
+          : "",
+        meetingRoomName: matchedMeetingRoom
+          ? matchedMeetingRoom.name
+          : m.meetingRoom?.name,
+        userName: m.user?.fullName,
+        gtimName: m.gtimName,
+        visitorName: m.visitorName,
+        companyName: m.companyName,
+        request: m.request,
+        equipment: mappedEquipment,
+        createdAt: m.createdAt,
+        isGenbaVisit: !m.meetingRoom,
+      };
+    },
+    [meetingRooms, equipmentList]
+  );
 
   const openMeetingDetail = (meeting: MeetingRow) => {
     setSelectedMeeting(meeting);
@@ -550,7 +555,7 @@ export default function ManageMeetingsPage() {
     });
   };
 
-  const handleEquipmentChange = (_e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEquipmentChange = () => {
     // Not used in current modal
   };
 

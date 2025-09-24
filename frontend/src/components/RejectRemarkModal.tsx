@@ -27,6 +27,7 @@ export default function RejectRemarkModal({
       await onConfirm();
       toast.success("Meeting berhasil ditolak");
     } catch (error) {
+      console.error("Error rejecting meeting:", error);
       toast.error("Gagal menolak meeting");
     }
   };

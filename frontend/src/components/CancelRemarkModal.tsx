@@ -26,7 +26,7 @@ export default function CancelRemarkModal({
     try {
       await onConfirm();
       toast.success("Meeting berhasil dibatalkan");
-    } catch (error) {
+    } catch {
       toast.error("Gagal membatalkan meeting");
     }
   };

@@ -24,8 +24,7 @@ export interface AddScheduleModalProps {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => void;
-  onEquipmentChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: () => void;
+
   onSuccess?: () => void; // Callback for successful submission
 }
 
@@ -38,8 +37,6 @@ export default function AddScheduleModal({
   equipmentUnavailableIds,
   onClose,
   onChange,
-  onEquipmentChange,
-  onSubmit,
   onSuccess,
 }: AddScheduleModalProps) {
   const [selectedEquipments, setSelectedEquipments] = useState<string[]>(
@@ -72,9 +69,9 @@ export default function AddScheduleModal({
     onChange({
       target: {
         name,
-        value: checked,
+        value: checked ? "true" : "false",
       },
-    } as any);
+    } as React.ChangeEvent<HTMLInputElement>);
   };
 
   const handleSubmit = async () => {
@@ -191,7 +188,7 @@ export default function AddScheduleModal({
       setTimeout(() => {
         onClose();
       }, 1000); // Small delay to show success toast
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error("Meeting gagal dibuat");
     } finally {
@@ -382,16 +379,12 @@ export default function AddScheduleModal({
               selectedEquipments={selectedEquipments}
               onChange={(arr) => {
                 setSelectedEquipments(arr);
-                // Update ke parent (formData)
-                const selected = equipmentList.filter((eq) =>
-                  arr.includes(eq.id)
-                );
-                onChange({
-                  target: {
-                    name: "equipment",
-                    value: selected,
-                  },
-                } as any);
+                // Update ke parent (formData) - equipment is already managed in formData
+                const selected = equipmentList
+                  .filter((eq) => arr.includes(eq.id))
+                  .map((eq) => ({ ...eq, quantity: 1 }));
+                // Update formData directly since equipment is part of the form state
+                formData.equipment = selected;
               }}
               isEditing={true}
             />

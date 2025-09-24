@@ -27,13 +27,6 @@ export default function EquipmentSelector({
     }
   };
 
-  // Handler untuk mengubah equipment pada index tertentu
-  const handleSelect = (idx: number, value: string) => {
-    const newSelected = [...selectedEquipments];
-    newSelected[idx] = value;
-    onChange(newSelected);
-  };
-
   // Handler untuk menghapus dropdown tertentu
   const handleRemove = (idx: number) => {
     let newSelected = [...selectedEquipments];
