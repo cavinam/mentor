@@ -803,6 +803,7 @@ export const updateMeeting = async (req: Request, res: Response) => {
         for (const recipient of notificationRecipients) {
           try {
             await sendEmail(recipient.email, subject, html);
+            console.log("Update email sent to", recipient.email);
           } catch (emailError) {
             console.error(
               "Failed to send update email to",
@@ -811,6 +812,8 @@ export const updateMeeting = async (req: Request, res: Response) => {
             );
           }
         }
+      } else {
+        console.log("No reception found.");
       }
     } catch (emailError) {
       console.error("Error sending update notifications:", emailError);
