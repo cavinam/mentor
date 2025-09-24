@@ -378,7 +378,7 @@ export default function ApprovalsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal dari
+              Start
             </label>
             <input
               type="date"
@@ -389,7 +389,7 @@ export default function ApprovalsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal sampai
+              End
             </label>
             <input
               type="date"
@@ -439,7 +439,7 @@ export default function ApprovalsPage() {
                       Company Name
                     </th>
                     <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700 border-b">
-                      Pemohon
+                      Requestor
                     </th>
                     <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700 border-b">
                       Departemen

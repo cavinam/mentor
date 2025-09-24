@@ -158,27 +158,61 @@ export default function MeetingDetailModal({
               </select>
             </div>
             <div>
-              <label className="block font-semibold mb-1">Meeting Room</label>
-              <select
-                name="meetingRoomId"
-                value={formData.meetingRoomId || ""}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 ${
-                  !isEditing
-                    ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                    : "bg-white"
-                }`}
-              >
-                <option value="">
-                  {formData.meetingRoomId ? "—" : "Pilih Meeting Room"}
-                </option>
-                {meetingRooms.map((room) => (
-                  <option key={room.id} value={room.id}>
-                    {room.name}
+              <label className="block font-semibold mb-1">
+                Meeting Room {formData.isGenbaVisit ? "(Opsional)" : ""}
+              </label>
+              <div className="flex gap-2">
+                <select
+                  name="meetingRoomId"
+                  value={formData.meetingRoomId || ""}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                  required={!formData.isGenbaVisit}
+                  className={`block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 ${
+                    !isEditing
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "bg-white"
+                  }`}
+                >
+                  <option value="">
+                    {formData.meetingRoomId
+                      ? (() => {
+                          const foundRoom = meetingRooms.find(
+                            (room) => room.id === formData.meetingRoomId
+                          );
+
+                          return foundRoom?.name || "—";
+                        })()
+                      : formData.isGenbaVisit
+                      ? "Opsional untuk Genba Visit"
+                      : "Pilih Meeting Room"}
                   </option>
-                ))}
-              </select>
+                  {meetingRooms.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.name}
+                    </option>
+                  ))}
+                </select>
+                {isEditing && formData.meetingRoomId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Create a synthetic event to clear the meeting room
+                      const syntheticEvent = {
+                        target: {
+                          name: "meetingRoomId",
+                          value: "",
+                        },
+                      } as React.ChangeEvent<HTMLSelectElement>;
+                      handleChange(syntheticEvent);
+                    }}
+                    className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm font-medium whitespace-nowrap"
+                    title="Clear Meeting Room"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <label className="inline-flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"
@@ -385,7 +419,10 @@ export default function MeetingDetailModal({
           {isEditing ? (
             <button
               type="button"
-              onClick={handleSave}
+              onClick={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
               className="px-4 py-2 rounded bg-blue-600 text-white"
             >
               Simpan

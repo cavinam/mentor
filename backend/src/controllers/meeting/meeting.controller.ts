@@ -222,7 +222,7 @@ export const createMeeting = async (req: Request, res: Response) => {
             <p>Dear ${approver.fullName},</p>
             <p>A new meeting booking requires your approval.</p>
             <p>Meeting Agenda: ${newMeeting.agenda}</p>
-            <p>Please <a href="http://192.168.50.23:3000/approvals">log in to the system</a> to review and approve the booking.</p>
+            <p>Please <a href="http://mentor.gtim.local:80/approvals">log in to the system</a> to review and approve the booking.</p>
             <p>Thank you.</p>
           `;
         try {
@@ -751,6 +751,72 @@ export const updateMeeting = async (req: Request, res: Response) => {
       },
     });
 
+    // Send email notification for meeting update
+    try {
+      const meetingDetails = await prisma.meeting.findUnique({
+        where: { id: meetingId },
+        include: {
+          user: { select: { fullName: true, email: true } },
+          department: { select: { id: true, name: true } },
+          meetingRoom: { select: { name: true } },
+        },
+      });
+
+      if (meetingDetails) {
+        // Get HRGA Manager, Section Head from the department, and Admin users
+        const notificationRecipients = await prisma.user.findMany({
+          where: {
+            OR: [
+              { role: UserRole.HRGA_MANAGER },
+              { role: UserRole.ADMIN },
+              {
+                role: UserRole.SECTION_HEAD,
+                departmentId: meetingDetails.departmentId,
+              },
+            ],
+          },
+          select: { id: true, email: true, fullName: true, role: true },
+        });
+
+        const updaterName = meetingDetails.user?.fullName || "Unknown User";
+        const subject = "Meeting Updated Notification";
+        const html = `
+          <p>Dear Team,</p>
+          <p>A meeting has been updated in the system.</p>
+          <p><strong>Meeting Details:</strong></p>
+          <ul>
+            <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
+            <li><strong>Department:</strong> ${
+              meetingDetails.department?.name
+            }</li>
+            <li><strong>Meeting Room:</strong> ${
+              meetingDetails.meetingRoom?.name || "Genba Visit"
+            }</li>
+            <li><strong>Updated by:</strong> ${updaterName}</li>
+            <li><strong>Update Date:</strong> ${new Date().toLocaleDateString()}</li>
+          </ul>
+          <p>Please review the updated meeting details in the system at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+          <p>Thank you.</p>
+        `;
+
+        // Send email to all recipients
+        for (const recipient of notificationRecipients) {
+          try {
+            await sendEmail(recipient.email, subject, html);
+          } catch (emailError) {
+            console.error(
+              "Failed to send update email to",
+              recipient.email,
+              emailError
+            );
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error("Error sending update notifications:", emailError);
+      // Don't fail the update if email fails
+    }
+
     return res.status(200).json(updatedMeeting);
   } catch (error: any) {
     console.error("Error updating meeting:", error);
@@ -1086,6 +1152,7 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
             remark || "No specific reason provided"
           }</p>
           <p>If you have any questions about this rejection, please contact your supervisor or the meeting approver.</p>
+          <p>You can view your meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
           <p>Thank you.</p>
         `;
 
@@ -1132,6 +1199,7 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
         const html = `
           <p>Dear ${userName},</p>
           <p>Your meeting booking with agenda "${meeting.agenda}" has been fully approved.</p>
+          <p>You can view your approved meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
           <p>Thank you.</p>
         `;
 
@@ -1234,7 +1302,7 @@ export const cancelMeeting = async (req: Request, res: Response) => {
       },
     });
 
-    // Send email notification to HRGA Manager, Section Head, and Admin
+    // Send email notification based on who is cancelling
     try {
       const meetingDetails = await prisma.meeting.findUnique({
         where: { id },
@@ -1245,39 +1313,110 @@ export const cancelMeeting = async (req: Request, res: Response) => {
       });
 
       if (meetingDetails) {
-        // Get HRGA Manager, Section Head from the department, and Admin users
-        const notificationRecipients = await prisma.user.findMany({
-          where: {
-            OR: [
-              { role: UserRole.HRGA_MANAGER },
-              { role: UserRole.ADMIN },
-              {
-                role: UserRole.SECTION_HEAD,
-                departmentId: meetingDetails.departmentId,
-              },
-            ],
-          },
-          select: { id: true, email: true, fullName: true, role: true },
-        });
+        let notificationRecipients;
+        let subject;
+        let html;
 
         const cancelerName = meetingDetails.user?.fullName || "Unknown User";
-        const subject = "Meeting Cancellation Notification";
-        const html = `
-          <p>Dear Team,</p>
-          <p>A meeting has been cancelled in the system.</p>
-          <p><strong>Meeting Details:</strong></p>
-          <ul>
-            <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
-            <li><strong>Department:</strong> ${
-              meetingDetails.department?.name
-            }</li>
-            <li><strong>Cancelled by:</strong> ${cancelerName}</li>
-            <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
-            ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
-          </ul>
-          <p>Please update your records accordingly.</p>
-          <p>Thank you.</p>
-        `;
+
+        // Different notification logic based on who is cancelling
+        if (userRole === UserRole.USER) {
+          // When USER cancels meeting → send to ADMIN, HRGA MANAGER, and SECTION HEAD
+          notificationRecipients = await prisma.user.findMany({
+            where: {
+              OR: [
+                { role: UserRole.HRGA_MANAGER },
+                { role: UserRole.ADMIN },
+                {
+                  role: UserRole.SECTION_HEAD,
+                  departmentId: meetingDetails.departmentId,
+                },
+              ],
+            },
+            select: { id: true, email: true, fullName: true, role: true },
+          });
+
+          subject = "Meeting Cancellation Notification";
+          html = `
+            <p>Dear Team,</p>
+            <p>A meeting has been cancelled by a user in the system.</p>
+            <p><strong>Meeting Details:</strong></p>
+            <ul>
+              <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
+              <li><strong>Department:</strong> ${
+                meetingDetails.department?.name
+              }</li>
+              <li><strong>Cancelled by:</strong> ${cancelerName} (User)</li>
+              <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
+              ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
+            </ul>
+            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+            <p>Thank you.</p>
+          `;
+        } else if (userRole === UserRole.SECTION_HEAD) {
+          // When SECTION HEAD cancels meeting → send to ADMIN, HRGA MANAGER, and the USER who created the meeting
+          notificationRecipients = await prisma.user.findMany({
+            where: {
+              OR: [
+                { role: UserRole.HRGA_MANAGER },
+                { role: UserRole.ADMIN },
+                { id: meetingDetails.userId }, // The user who created the meeting
+              ],
+            },
+            select: { id: true, email: true, fullName: true, role: true },
+          });
+
+          subject = "Meeting Cancellation Notification";
+          html = `
+            <p>Dear Team,</p>
+            <p>A meeting has been cancelled by the Section Head in the system.</p>
+            <p><strong>Meeting Details:</strong></p>
+            <ul>
+              <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
+              <li><strong>Department:</strong> ${
+                meetingDetails.department?.name
+              }</li>
+              <li><strong>Cancelled by:</strong> ${cancelerName} (Section Head)</li>
+              <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
+              ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
+            </ul>
+            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+            <p>Thank you.</p>
+          `;
+        } else {
+          // For ADMIN or HRGA_MANAGER, use the original logic
+          notificationRecipients = await prisma.user.findMany({
+            where: {
+              OR: [
+                { role: UserRole.HRGA_MANAGER },
+                { role: UserRole.ADMIN },
+                {
+                  role: UserRole.SECTION_HEAD,
+                  departmentId: meetingDetails.departmentId,
+                },
+              ],
+            },
+            select: { id: true, email: true, fullName: true, role: true },
+          });
+
+          subject = "Meeting Cancellation Notification";
+          html = `
+            <p>Dear Team,</p>
+            <p>A meeting has been cancelled in the system.</p>
+            <p><strong>Meeting Details:</strong></p>
+            <ul>
+              <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
+              <li><strong>Department:</strong> ${
+                meetingDetails.department?.name
+              }</li>
+              <li><strong>Cancelled by:</strong> ${cancelerName}</li>
+              <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
+              ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
+            </ul>
+            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+            <p>Thank you.</p>
+          `;
+        }
 
         // Send email to all recipients
         for (const recipient of notificationRecipients) {

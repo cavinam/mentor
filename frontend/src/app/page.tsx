@@ -132,7 +132,12 @@ export default function Home() {
     return meetings.filter((m) => {
       const mStart = getDateOnly(m.startDate);
       const mEnd = getDateOnly(m.endDate) || mStart;
-      return mStart <= today && mEnd >= today;
+      return (
+        mStart <= today &&
+        mEnd >= today &&
+        m.overallStatus !== "REJECTED" &&
+        m.overallStatus !== "CANCELED"
+      );
     });
   }, [meetings]);
 
@@ -158,7 +163,12 @@ export default function Home() {
       if (m.overallStatus === "PENDING") pending += 1;
       const mStart = getDateOnly(m.startDate);
       const mEnd = getDateOnly(m.endDate) || mStart;
-      if (mStart <= today && mEnd >= today) {
+      if (
+        mStart <= today &&
+        mEnd >= today &&
+        m.overallStatus !== "REJECTED" &&
+        m.overallStatus !== "CANCELED"
+      ) {
         todayMeetings += 1;
       }
     });
@@ -217,7 +227,7 @@ export default function Home() {
             }}
           >
             <div className="text-sm font-medium text-green-700">
-              Kegiatan Hari Ini
+              Today Activity
             </div>
             <div className="mt-2 text-4xl font-bold text-green-900">
               {loading ? "…" : todayCount}
@@ -331,7 +341,7 @@ export default function Home() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-xl font-semibold text-green-800">
-                Kegiatan Hari Ini ({todayList.length})
+                Today Activity ({todayList.length})
               </h3>
               <button
                 type="button"

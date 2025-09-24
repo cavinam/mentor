@@ -182,7 +182,7 @@ export default function CalendarPage() {
         headers: { Authorization: buildAuth(token) },
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Gagal mengambil daftar ruang rapat.");
+      if (!response.ok) throw new Error("Gagal mengambil daftar Meeting Room.");
       const data = await response.json();
       const normalized = (data || []).map(
         (r: { id: string | number; name: string }) => ({
@@ -889,7 +889,7 @@ export default function CalendarPage() {
         if (response.status === 409) {
           const msg =
             typeof errorData.message === "string" ? errorData.message : "";
-          if (msg.toLowerCase().includes("ruang rapat")) {
+          if (msg.toLowerCase().includes("Meeting Room")) {
             toast.error(`Meeting Bentrok: ${msg}`);
           } else if (
             Array.isArray(errorData.conflicts) &&
@@ -1046,7 +1046,7 @@ export default function CalendarPage() {
                 htmlFor="meeting-room-select"
                 className="block text-2xl font-bold text-gray-700 mb-1"
               >
-                Pilih Ruang Rapat
+                Pilih Meeting Room
               </label>
               <select
                 id="meeting-room-select"
@@ -1055,7 +1055,7 @@ export default function CalendarPage() {
                 className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-300
                   focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-lg font-semibold px-4 py-2"
               >
-                <option value="">Semua Ruang</option>
+                <option value="">Meeting Room</option>
                 {meetingRooms.map((room) => (
                   <option key={room.id} value={room.id}>
                     {room.name}

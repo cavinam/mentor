@@ -368,7 +368,10 @@ export default function ManageMeetingsPage() {
   const showDepartmentFilter = adminView;
 
   const convertToCalendarEvent = useCallback(
-    (m: MeetingRow): CalendarEvent => {
+    (
+      m: MeetingRow,
+      meetingRooms: { id: string; name: string }[] = []
+    ): CalendarEvent => {
       const start = moment(
         `${m.startDate} ${
           m.startTime.length === 5 ? m.startTime + ":00" : m.startTime
@@ -382,10 +385,20 @@ export default function ManageMeetingsPage() {
         "YYYY-MM-DD HH:mm:ss"
       ).toDate();
 
-      // Find matching meeting room from meetingRooms state by id
-      const matchedMeetingRoom = meetingRooms.find(
-        (room) => room.id === String(m.meetingRoom?.id)
-      );
+      // Use the meeting room data directly from the meeting object
+      // This ensures we always have the correct meeting room name
+      let meetingRoomId = m.meetingRoom?.id ? String(m.meetingRoom.id) : "";
+      const meetingRoomName = m.meetingRoom?.name || "";
+
+      // If meetingRoomId is not set, try to find it from meetingRooms
+      if (!meetingRoomId && meetingRoomName && meetingRooms.length > 0) {
+        const room = meetingRooms.find(
+          (r) => r.name?.toLowerCase() === meetingRoomName?.toLowerCase()
+        );
+        if (room) {
+          meetingRoomId = room.id;
+        }
+      }
 
       // Map equipment ids to match equipmentList ids if possible
       const mappedEquipment = (m.meetingEquipments || []).map((me) => {
@@ -400,7 +413,7 @@ export default function ManageMeetingsPage() {
         };
       });
 
-      return {
+      const result = {
         id: String(m.id),
         title: m.agenda || "Untitled Meeting",
         agenda: m.agenda,
@@ -409,14 +422,8 @@ export default function ManageMeetingsPage() {
         status: m.overallStatus,
         departmentId: m.department?.id,
         departmentName: m.department?.name,
-        meetingRoomId: matchedMeetingRoom
-          ? matchedMeetingRoom.id
-          : m.meetingRoom?.id
-          ? String(m.meetingRoom.id)
-          : "",
-        meetingRoomName: matchedMeetingRoom
-          ? matchedMeetingRoom.name
-          : m.meetingRoom?.name,
+        meetingRoomId: meetingRoomId,
+        meetingRoomName: meetingRoomName,
         userName: m.user?.fullName,
         gtimName: m.gtimName,
         visitorName: m.visitorName,
@@ -426,12 +433,15 @@ export default function ManageMeetingsPage() {
         createdAt: m.createdAt,
         isGenbaVisit: !m.meetingRoom,
       };
+
+      return result;
     },
-    [meetingRooms, equipmentList]
+    [equipmentList]
   );
 
   const openMeetingDetail = (meeting: MeetingRow) => {
     setSelectedMeeting(meeting);
+    // Don't pass meetingRooms here - let the useEffect handle hydration after meetingRooms are loaded
     setFormData(convertToCalendarEvent(meeting));
     setIsEditing(false);
     setModalOpen(true);
@@ -454,7 +464,9 @@ export default function ManageMeetingsPage() {
         const room = meetingRooms.find(
           (r) => r.name?.toLowerCase() === next.meetingRoomName?.toLowerCase()
         );
-        if (room) next.meetingRoomId = room.id;
+        if (room) {
+          next.meetingRoomId = room.id;
+        }
       }
 
       if (next.equipment && next.equipment.length > 0) {
@@ -476,16 +488,32 @@ export default function ManageMeetingsPage() {
 
   React.useEffect(() => {
     if (selectedMeeting && meetingRooms.length > 0) {
-      const converted = convertToCalendarEvent(selectedMeeting);
+      const converted = convertToCalendarEvent(selectedMeeting, meetingRooms);
       const hydrated = hydrateIdsFromNames(converted);
       setFormData(hydrated);
     }
   }, [
     selectedMeeting,
     meetingRooms.length,
+    meetingRooms,
     hydrateIdsFromNames,
     convertToCalendarEvent,
   ]);
+
+  // Additional useEffect to handle the case when formData exists but meetingRoomId is missing
+  React.useEffect(() => {
+    if (
+      formData &&
+      !formData.meetingRoomId &&
+      (formData as CalendarEvent).meetingRoomName &&
+      meetingRooms.length > 0
+    ) {
+      const hydrated = hydrateIdsFromNames(formData as CalendarEvent);
+      if (hydrated.meetingRoomId !== formData.meetingRoomId) {
+        setFormData(hydrated);
+      }
+    }
+  }, [formData, meetingRooms, hydrateIdsFromNames]);
 
   const closeMeetingDetail = () => {
     setSelectedMeeting(null);
@@ -948,12 +976,7 @@ export default function ManageMeetingsPage() {
             setFormData((prev: FormDataType | null) => {
               if (!prev) return null;
 
-              let newValue: Date | null = null;
-
-              if (value) {
-                newValue =
-                  typeof value === "string" ? new Date(value) : (value as Date);
-              }
+              let newValue: any = value;
 
               // Handle date and time fields properly
               if (name === "startDate" || name === "endDate") {
@@ -989,6 +1012,7 @@ export default function ManageMeetingsPage() {
                   newValue = null;
                 }
               }
+              // For all other fields (including meetingRoomId), keep the original string value
 
               // Update the correct field based on the input name
               if (name === "startDate" || name === "startTime") {
