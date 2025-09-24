@@ -250,47 +250,50 @@ export default function CalendarPage() {
     time: moment(d).format("HH:mm:ss"),
   });
 
-  const fetchAvailability = async (
-    start: Date,
-    end: Date,
-    excludeMeetingId?: string
-  ): Promise<string[]> => {
-    const token = getToken();
-    if (!token) return [];
-    try {
-      const s = getPieces(start);
-      const e = getPieces(end);
-      const url = new URL(`${API_BASE_URL}/api/equipment/availability`);
-      url.searchParams.set("startDate", s.date);
-      url.searchParams.set("endDate", e.date);
-      url.searchParams.set("startTime", toHHmmss(s.time));
-      url.searchParams.set("endTime", toHHmmss(e.time));
-      if (excludeMeetingId)
-        url.searchParams.set("excludeMeetingId", excludeMeetingId);
+  const fetchAvailability = useCallback(
+    async (
+      start: Date,
+      end: Date,
+      excludeMeetingId?: string
+    ): Promise<string[]> => {
+      const token = getToken();
+      if (!token) return [];
+      try {
+        const s = getPieces(start);
+        const e = getPieces(end);
+        const url = new URL(`${API_BASE_URL}/api/equipment/availability`);
+        url.searchParams.set("startDate", s.date);
+        url.searchParams.set("endDate", e.date);
+        url.searchParams.set("startTime", toHHmmss(s.time));
+        url.searchParams.set("endTime", toHHmmss(e.time));
+        if (excludeMeetingId)
+          url.searchParams.set("excludeMeetingId", excludeMeetingId);
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: buildAuth(token) },
-        cache: "no-store",
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      const unavailableIds = (
-        data as {
-          id: string | number;
-          unavailable?: boolean;
-          remaining?: number;
-        }[]
-      )
-        .filter(
-          (x) =>
-            x.unavailable || (x.remaining !== undefined && x.remaining <= 0)
+        const res = await fetch(url.toString(), {
+          headers: { Authorization: buildAuth(token) },
+          cache: "no-store",
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        const unavailableIds = (
+          data as {
+            id: string | number;
+            unavailable?: boolean;
+            remaining?: number;
+          }[]
         )
-        .map((x) => String(x.id));
-      return unavailableIds;
-    } catch {
-      return [];
-    }
-  };
+          .filter(
+            (x) =>
+              x.unavailable || (x.remaining !== undefined && x.remaining <= 0)
+          )
+          .map((x) => String(x.id));
+        return unavailableIds;
+      } catch {
+        return [];
+      }
+    },
+    []
+  );
 
   // Auto-load availability for Create modal when time changes
   useEffect(() => {
@@ -362,149 +365,152 @@ export default function CalendarPage() {
     return null;
   }
 
-  const fetchEvents = async (_meetingRoomId: string) => {
-    setLoading(true);
-    setError(null);
+  const fetchEvents = useCallback(
+    async (_meetingRoomId: string) => {
+      setLoading(true);
+      setError(null);
 
-    const token = getToken();
-    if (!token) {
-      setError("Token otentikasi tidak ditemukan.");
-      setLoading(false);
-      return;
-    }
+      const token = getToken();
+      if (!token) {
+        setError("Token otentikasi tidak ditemukan.");
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/meetings/calendar`, {
-        headers: { Authorization: buildAuth(token) },
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Gagal mengambil data kalender.");
-      const data = await response.json();
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/meetings/calendar`, {
+          headers: { Authorization: buildAuth(token) },
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Gagal mengambil data kalender.");
+        const data = await response.json();
 
-      const formattedEvents: CalendarEvent[] = (
-        data as {
-          id: string | number;
-          title?: string;
-          agenda?: string;
-          startDate?: string;
-          startTime?: string;
-          start?: string;
-          endDate?: string;
-          endTime?: string;
-          end?: string;
-          status?: string;
-          overallStatus?: string;
-          userName?: string;
-          user?: { fullName?: string };
-          departmentId?: string | number;
-          department?: { id?: string | number; name?: string };
-          departmentName?: string;
-          meetingRoomId?: string | number;
-          meetingRoom?: { id?: string | number; name?: string };
-          meetingRoomName?: string;
-          gtimName?: string;
-          visitorName?: string;
-          companyName?: string;
-          request?: string;
-          equipment?: { id: string; name: string; quantity: number }[];
-          meetingEquipments?: {
-            equipment?: { id?: string; name?: string };
-            quantity: number;
-          }[];
-          isGenbaVisit?: boolean;
-          createdAt?: string;
-          updatedAt?: string;
-        }[]
-      )
-        .map((event) => {
-          // 🔹 Gunakan parseEventTime untuk handle dua kemungkinan
-          const start = parseEventTime(
-            event.startDate,
-            event.startTime,
-            event.start
-          );
-          const end = parseEventTime(event.endDate, event.endTime, event.end);
+        const formattedEvents: CalendarEvent[] = (
+          data as {
+            id: string | number;
+            title?: string;
+            agenda?: string;
+            startDate?: string;
+            startTime?: string;
+            start?: string;
+            endDate?: string;
+            endTime?: string;
+            end?: string;
+            status?: string;
+            overallStatus?: string;
+            userName?: string;
+            user?: { fullName?: string };
+            departmentId?: string | number;
+            department?: { id?: string | number; name?: string };
+            departmentName?: string;
+            meetingRoomId?: string | number;
+            meetingRoom?: { id?: string | number; name?: string };
+            meetingRoomName?: string;
+            gtimName?: string;
+            visitorName?: string;
+            companyName?: string;
+            request?: string;
+            equipment?: { id: string; name: string; quantity: number }[];
+            meetingEquipments?: {
+              equipment?: { id?: string; name?: string };
+              quantity: number;
+            }[];
+            isGenbaVisit?: boolean;
+            createdAt?: string;
+            updatedAt?: string;
+          }[]
+        )
+          .map((event) => {
+            // 🔹 Gunakan parseEventTime untuk handle dua kemungkinan
+            const start = parseEventTime(
+              event.startDate,
+              event.startTime,
+              event.start
+            );
+            const end = parseEventTime(event.endDate, event.endTime, event.end);
 
-          if (!start || !end) return null;
+            if (!start || !end) return null;
 
-          const isAllDay = moment(end).diff(moment(start), "hours") >= 24;
+            const isAllDay = moment(end).diff(moment(start), "hours") >= 24;
 
-          return {
-            id: String(event.id),
-            title: event.title ?? event.agenda ?? "-",
-            start: start,
-            end: end,
-            // simpan juga nilai mentah dari backend untuk menghindari drift saat ditampilkan di modal
-            rawStartDate: event.startDate,
-            rawStartTime: event.startTime,
-            rawEndDate: event.endDate,
-            rawEndTime: event.endTime,
-            allDay: isAllDay,
-            status: event.status ?? event.overallStatus,
-            userName: event.userName ?? event.user?.fullName,
-            departmentId: event.departmentId
-              ? String(event.departmentId)
-              : event.department?.id
-              ? String(event.department?.id)
-              : undefined,
-            departmentName: event.departmentName ?? event.department?.name,
-            meetingRoomId: event.meetingRoomId
-              ? String(event.meetingRoomId)
-              : event.meetingRoom?.id
-              ? String(event.meetingRoom?.id)
-              : undefined,
-            meetingRoomName: event.meetingRoomName ?? event.meetingRoom?.name,
-            gtimName: event.gtimName,
-            visitorName: event.visitorName,
-            companyName: event.companyName,
-            agenda: event.agenda,
-            request: event.request,
-            equipment:
-              event.equipment ??
-              (event.meetingEquipments
-                ? event.meetingEquipments.map(
-                    (me: {
-                      equipment?: { id?: string; name?: string };
-                      quantity: number;
-                    }) => ({
-                      id: me.equipment?.id
-                        ? String(me.equipment?.id)
-                        : me.equipment?.id,
-                      name: me.equipment?.name,
-                      quantity: me.quantity,
-                    })
-                  )
-                : []),
-            isGenbaVisit: event.isGenbaVisit,
-            createdAt: event.createdAt,
-            updatedAt: event.updatedAt,
-          };
-        })
-        .filter(Boolean) as CalendarEvent[];
+            return {
+              id: String(event.id),
+              title: event.title ?? event.agenda ?? "-",
+              start: start,
+              end: end,
+              // simpan juga nilai mentah dari backend untuk menghindari drift saat ditampilkan di modal
+              rawStartDate: event.startDate,
+              rawStartTime: event.startTime,
+              rawEndDate: event.endDate,
+              rawEndTime: event.endTime,
+              allDay: isAllDay,
+              status: event.status ?? event.overallStatus,
+              userName: event.userName ?? event.user?.fullName,
+              departmentId: event.departmentId
+                ? String(event.departmentId)
+                : event.department?.id
+                ? String(event.department?.id)
+                : undefined,
+              departmentName: event.departmentName ?? event.department?.name,
+              meetingRoomId: event.meetingRoomId
+                ? String(event.meetingRoomId)
+                : event.meetingRoom?.id
+                ? String(event.meetingRoom?.id)
+                : undefined,
+              meetingRoomName: event.meetingRoomName ?? event.meetingRoom?.name,
+              gtimName: event.gtimName,
+              visitorName: event.visitorName,
+              companyName: event.companyName,
+              agenda: event.agenda,
+              request: event.request,
+              equipment:
+                event.equipment ??
+                (event.meetingEquipments
+                  ? event.meetingEquipments.map(
+                      (me: {
+                        equipment?: { id?: string; name?: string };
+                        quantity: number;
+                      }) => ({
+                        id: me.equipment?.id
+                          ? String(me.equipment?.id)
+                          : me.equipment?.id,
+                        name: me.equipment?.name,
+                        quantity: me.quantity,
+                      })
+                    )
+                  : []),
+              isGenbaVisit: event.isGenbaVisit,
+              createdAt: event.createdAt,
+              updatedAt: event.updatedAt,
+            };
+          })
+          .filter(Boolean) as CalendarEvent[];
 
-      const filtered = _meetingRoomId
-        ? formattedEvents.filter((ev) => ev.meetingRoomId === _meetingRoomId)
-        : formattedEvents;
+        const filtered = _meetingRoomId
+          ? formattedEvents.filter((ev) => ev.meetingRoomId === _meetingRoomId)
+          : formattedEvents;
 
-      console.log("Calendar: total fetched events=", formattedEvents.length);
-      console.log(
-        "Calendar: filtered by room=",
-        _meetingRoomId || "(ALL)",
-        "count=",
-        filtered.length
-      );
+        console.log("Calendar: total fetched events=", formattedEvents.length);
+        console.log(
+          "Calendar: filtered by room=",
+          _meetingRoomId || "(ALL)",
+          "count=",
+          filtered.length
+        );
 
-      setEvents(filtered);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Terjadi kesalahan saat mengambil data."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        setEvents(filtered);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat mengambil data."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedMeetingRoomId, currentUserRole, currentUserDeptId]
+  );
 
   // ====== Helpers ======
   const hydrateIdsFromNames = useCallback(
@@ -756,29 +762,6 @@ export default function CalendarPage() {
     }));
   };
 
-  // Checkbox handler for create modal equipment
-  const handleCreateEquipmentChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { value, checked } = e.target;
-    if (!checked) return;
-    setCreateForm((prev) => {
-      const list = prev.equipment ?? [];
-      if (checked) {
-        if (!list.some((eq) => eq.name === value)) {
-          const found = equipmentList.find((eq) => eq.name === value);
-          if (!found) return prev;
-          return {
-            ...prev,
-            equipment: [...list, { id: found.id, name: value, quantity: 1 }],
-          };
-        }
-        return prev;
-      }
-      return { ...prev, equipment: list.filter((eq) => eq.name !== value) };
-    });
-  };
-
   // const handleCreateSubmit = async () => {
   //   // This function is now handled by the modal itself
   //   // The modal will handle validation, API call, and toast notifications
@@ -944,7 +927,7 @@ export default function CalendarPage() {
   };
 
   // Legacy checkbox handler (kept for compatibility, unused by new UI)
-  const handleEquipmentChange = (_e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEquipmentChange = () => {
     if (!isEditing) return;
   };
 
