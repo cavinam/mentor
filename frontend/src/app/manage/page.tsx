@@ -95,6 +95,12 @@ export default function ManageMeetingsPage() {
     { id: string; name: string }[]
   >([]);
 
+  // Loading state for save operation
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Loading state for cancel operation
+  const [isCanceling, setIsCanceling] = useState(false);
+
   const showNotice = (
     message: string,
     type: "success" | "error" | "warning" = "success"
@@ -526,11 +532,17 @@ export default function ManageMeetingsPage() {
       return;
     }
 
+    if (isSaving) {
+      return; // Prevent multiple simultaneous saves
+    }
+
     const token = getToken();
     if (!token) {
       showNotice("Token otentikasi tidak ditemukan.", "error");
       return;
     }
+
+    setIsSaving(true);
 
     const payload = {
       agenda: formData.agenda,
@@ -547,6 +559,7 @@ export default function ManageMeetingsPage() {
       companyName: formData.companyName,
       request: formData.request,
     };
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/meetings/${formData.id}`, {
         method: "PATCH",
@@ -556,19 +569,23 @@ export default function ManageMeetingsPage() {
         },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         showNotice(err.message || "Gagal menyimpan meeting.", "error");
         return;
       }
-      // Remove duplicate toast, show only one success notice
+
+      // Success - show success notice and refresh data
       setIsEditing(false);
-      // Refresh list after save
       fetchMeetings(adminView, role, userDepartmentId);
       showNotice("Meeting berhasil disimpan.", "success");
+      closeMeetingDetail(); // Close modal after successful save
     } catch (e) {
       console.error(e);
       showNotice("Terjadi kesalahan saat menyimpan meeting.", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -970,6 +987,7 @@ export default function ManageMeetingsPage() {
           departments={departments}
           meetingRooms={meetingRooms}
           equipmentList={equipmentList}
+          isSaving={isSaving}
           closeModal={closeMeetingDetail}
           handleChange={(e) => {
             const { name, value } = e.target;
@@ -1046,33 +1064,45 @@ export default function ManageMeetingsPage() {
         onClose={() => setRejectModalOpen(false)}
         onConfirm={async () => {
           if (!rejectMeetingId) return;
-          // Call cancelMeeting with remark
+
+          if (isCanceling) {
+            return; // Prevent multiple simultaneous cancels
+          }
+
           const token = getToken();
           if (!token) {
             throw new Error("Token otentikasi tidak ditemukan.");
           }
-          const res = await fetch(
-            `${API_BASE_URL}/api/meetings/${rejectMeetingId}/cancel`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: buildAuth(token),
-              },
-              body: JSON.stringify({ remark: rejectRemark }),
+
+          setIsCanceling(true);
+
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/api/meetings/${rejectMeetingId}/cancel`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: buildAuth(token),
+                },
+                body: JSON.stringify({ remark: rejectRemark }),
+              }
+            );
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.message || "Gagal membatalkan meeting.");
             }
-          );
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.message || "Gagal membatalkan meeting.");
+            setRejectModalOpen(false);
+            setRejectMeetingId(null);
+            setRejectRemark("");
+            fetchMeetings(adminView, role, userDepartmentId);
+          } finally {
+            setIsCanceling(false);
           }
-          setRejectModalOpen(false);
-          setRejectMeetingId(null);
-          setRejectRemark("");
-          fetchMeetings(adminView, role, userDepartmentId);
         }}
         remark={rejectRemark}
         setRemark={setRejectRemark}
+        isLoading={isCanceling}
       />
     </Layout>
   );

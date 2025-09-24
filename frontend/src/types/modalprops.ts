@@ -10,6 +10,8 @@ export interface MeetingDetailModalProps {
   equipmentList: { id: string; name: string }[];
   // IDs peralatan yang tidak tersedia (untuk disable checkbox)
   equipmentUnavailableIds?: string[];
+  // Loading state for save operation
+  isSaving?: boolean;
   closeModal: () => void;
   handleChange: (
     e: React.ChangeEvent<
