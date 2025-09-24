@@ -947,13 +947,15 @@ export default function CalendarPage() {
     });
   };
 
-  // Filtered events based on search query
+  // Filtered events based on search query and exclude past meetings
   const filteredEvents = useMemo(() => {
+    const now = moment();
+    const notPastEvents = events.filter((ev) => moment(ev.end).isAfter(now));
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return events;
+    if (!q) return notPastEvents;
     const includes = (v?: string | number | Date) =>
       !!v && String(v).toLowerCase().includes(q);
-    return events.filter((ev) => {
+    return notPastEvents.filter((ev) => {
       return (
         includes(ev.title) ||
         includes(ev.agenda) ||

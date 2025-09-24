@@ -994,7 +994,7 @@ export default function ManageMeetingsPage() {
             setFormData((prev: FormDataType | null) => {
               if (!prev) return null;
 
-              let newValue: any = value;
+              let newValue: string | boolean | number | Date | null = value;
 
               // Handle date and time fields properly
               if (name === "startDate" || name === "endDate") {
@@ -1036,12 +1036,12 @@ export default function ManageMeetingsPage() {
               if (name === "startDate" || name === "startTime") {
                 return {
                   ...prev,
-                  start: newValue,
+                  start: newValue as Date | null,
                 };
               } else if (name === "endDate" || name === "endTime") {
                 return {
                   ...prev,
-                  end: newValue,
+                  end: newValue as Date | null,
                 };
               }
 
