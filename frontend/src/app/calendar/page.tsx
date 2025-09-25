@@ -528,6 +528,11 @@ export default function CalendarPage() {
         if (dep) next.departmentId = dep.id;
       }
 
+      // Treat empty string meetingRoomId as undefined to clear selection
+      if (next.meetingRoomId === "") {
+        next.meetingRoomId = undefined;
+      }
+
       if (!next.meetingRoomId && next.meetingRoomName) {
         const room = meetingRooms.find(
           (r) => r.name?.toLowerCase() === next.meetingRoomName?.toLowerCase()
@@ -662,9 +667,13 @@ export default function CalendarPage() {
   ) => {
     const { name, type, value } = e.target;
     if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
       setFormData((prev) => ({
         ...prev,
-        [name]: (e.target as HTMLInputElement).checked,
+        [name]: checked,
+        ...(name === "isGenbaVisit" && checked
+          ? { meetingRoomId: undefined }
+          : {}),
       }));
       return;
     }
@@ -719,9 +728,13 @@ export default function CalendarPage() {
   ) => {
     const { name, type, value } = e.target;
     if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
       setCreateForm((prev) => ({
         ...prev,
-        [name]: (e.target as HTMLInputElement).checked,
+        [name]: checked,
+        ...(name === "isGenbaVisit" && checked
+          ? { meetingRoomId: undefined }
+          : {}),
       }));
       return;
     }
@@ -760,10 +773,17 @@ export default function CalendarPage() {
       }));
       return;
     }
-    setCreateForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setCreateForm((prev) => {
+      const newValue = value;
+      const updated = { ...prev, [name]: newValue };
+      if (name === "isGenbaVisit") {
+        updated.isGenbaVisit = value === "true";
+        if (updated.isGenbaVisit) {
+          updated.meetingRoomId = undefined;
+        }
+      }
+      return updated;
+    });
   };
 
   // const handleCreateSubmit = async () => {
@@ -873,6 +893,11 @@ export default function CalendarPage() {
       toast.error("Token otentikasi tidak ditemukan.");
       setLoading(false);
       return;
+    }
+
+    // Convert empty string meetingRoomId to undefined before saving
+    if (dataToSave.meetingRoomId === "") {
+      dataToSave.meetingRoomId = undefined;
     }
 
     try {

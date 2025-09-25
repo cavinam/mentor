@@ -7,7 +7,13 @@ import {
   Prisma,
 } from "@prisma/client";
 
-import { sendEmail } from "../../utils/email";
+import {
+  sendNewMeetingApprovalEmail,
+  sendMeetingUpdateApprovalEmail,
+  sendMeetingRejectionEmail,
+  sendMeetingApprovalEmail,
+  sendMeetingCancellationEmail,
+} from "../../utils/meetingEmails";
 
 export const createMeeting = async (req: Request, res: Response) => {
   try {
@@ -31,6 +37,9 @@ export const createMeeting = async (req: Request, res: Response) => {
       request,
     } = req.body;
 
+    // Convert empty string meetingRoomId to null for Prisma to clear relation
+    const normalizedMeetingRoomId = meetingRoomId === "" ? null : meetingRoomId;
+
     const userId = req.user.id;
 
     // --- Validasi Awal: Pastikan equipmentQuantities ada dan ukurannya sesuai
@@ -45,10 +54,10 @@ export const createMeeting = async (req: Request, res: Response) => {
     }
 
     // --- LOGIKA CEK BENTROKAN JADWAL RUANGAN ---
-    if (!isGenbaVisit && meetingRoomId) {
+    if (!isGenbaVisit && normalizedMeetingRoomId) {
       const conflictingMeetings = await prisma.meeting.findMany({
         where: {
-          meetingRoomId,
+          meetingRoomId: normalizedMeetingRoomId,
           isDeleted: false,
           overallStatus: {
             in: [BookingStatus.PENDING, BookingStatus.APPROVED],
@@ -168,9 +177,18 @@ export const createMeeting = async (req: Request, res: Response) => {
         overallStatus: BookingStatus.PENDING,
         user: { connect: { id: userId } },
         department: { connect: { id: departmentId } },
-        meetingRoom: meetingRoomId
-          ? { connect: { id: meetingRoomId } }
+        meetingRoom: normalizedMeetingRoomId
+          ? { connect: { id: normalizedMeetingRoomId } }
           : undefined,
+      },
+      include: {
+        meetingRoom: true,
+        department: true,
+        meetingEquipments: {
+          include: {
+            equipment: true,
+          },
+        },
       },
     });
 
@@ -212,26 +230,7 @@ export const createMeeting = async (req: Request, res: Response) => {
     });
 
     // Send email notification to Section Head and HRGA Manager
-    for (const approver of approvers) {
-      if (
-        approver.role === UserRole.SECTION_HEAD ||
-        approver.role === UserRole.HRGA_MANAGER
-      ) {
-        const subject = "New Meeting Booking Approval Needed";
-        const html = `
-            <p>Dear ${approver.fullName},</p>
-            <p>A new meeting booking requires your approval.</p>
-            <p>Meeting Agenda: ${newMeeting.agenda}</p>
-            <p>Please <a href="http://mentor.gtim.local:80/approvals">log in to the system</a> to review and approve the booking.</p>
-            <p>Thank you.</p>
-          `;
-        try {
-          await sendEmail(approver.email, subject, html);
-        } catch (error) {
-          console.error("Failed to send approval email to", approver.email);
-        }
-      }
-    }
+    await sendNewMeetingApprovalEmail(newMeeting, approvers);
 
     await prisma.history.create({
       data: {
@@ -536,11 +535,23 @@ export const updateMeeting = async (req: Request, res: Response) => {
       gtimName,
     } = req.body;
 
+    const normalizedMeetingRoomId =
+      meetingRoomId === "" || meetingRoomId === undefined
+        ? null
+        : meetingRoomId;
+
     const existingMeeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       include: {
         user: true,
         approvals: true,
+        meetingRoom: true,
+        department: true,
+        meetingEquipments: {
+          include: {
+            equipment: true,
+          },
+        },
       },
     });
 
@@ -708,8 +719,10 @@ export const updateMeeting = async (req: Request, res: Response) => {
         isGenbaVisit: req.body.isGenbaVisit ?? existingMeeting.isGenbaVisit,
 
         // Allow meeting room even for genba visits
-        meetingRoom: meetingRoomId
-          ? { connect: { id: meetingRoomId } }
+        meetingRoom: normalizedMeetingRoomId
+          ? { connect: { id: normalizedMeetingRoomId } }
+          : normalizedMeetingRoomId === null
+          ? { disconnect: true }
           : undefined,
 
         department: departmentId
@@ -719,6 +732,15 @@ export const updateMeeting = async (req: Request, res: Response) => {
         overallStatus: shouldResetToPending
           ? BookingStatus.PENDING
           : existingMeeting.overallStatus,
+      },
+      include: {
+        meetingRoom: true,
+        department: true,
+        meetingEquipments: {
+          include: {
+            equipment: true,
+          },
+        },
       },
     });
 
@@ -826,60 +848,15 @@ export const updateMeeting = async (req: Request, res: Response) => {
           : "No specific fields tracked"
       );
 
-      for (const approver of approvers) {
-        if (
-          approver.role === UserRole.SECTION_HEAD ||
-          approver.role === UserRole.HRGA_MANAGER ||
-          approver.role === UserRole.ADMIN
-        ) {
-          const html = `
-            <p>Dear ${approver.fullName},</p>
-            <p>A meeting booking has been updated. Here are the details:</p>
-            <p><strong>Meeting Information:</strong></p>
-            <ul>
-              <li><strong>Agenda:</strong> ${updatedMeeting.agenda}</li>
-              <li><strong>Updated by:</strong> ${req.user?.role} user</li>
-              <li><strong>Previous Status:</strong> ${
-                existingMeeting.overallStatus
-              }</li>
-              <li><strong>Current Status:</strong> ${
-                updatedMeeting.overallStatus
-              }</li>
-              <li><strong>Update Type:</strong> ${updateType}</li>
-              ${
-                changedFields.length > 0
-                  ? `<li><strong>Modified Fields:</strong> ${changedFields.join(
-                      ", "
-                    )}</li>`
-                  : ""
-              }
-              ${
-                shouldResetToPending
-                  ? `<li><strong>Action Required:</strong> Please review and approve the updated booking</li>`
-                  : ""
-              }
-            </ul>
-            <p>Please <a href="http://mentor.gtim.local:80/approvals">log in to the system</a> to review the updated booking.</p>
-            <p>Thank you.</p>
-          `;
-
-          console.log(
-            `📤 Sending email to ${approver.fullName} (${approver.email}) - Role: ${approver.role} - Update: ${updateType}`
-          );
-
-          try {
-            await sendEmail(approver.email, subject, html);
-            console.log(
-              `✅ Email sent successfully to ${approver.email} - ${updateType}`
-            );
-          } catch (error) {
-            console.error(
-              `❌ Failed to send email to ${approver.email}:`,
-              error
-            );
-          }
-        }
-      }
+      await sendMeetingUpdateApprovalEmail(
+        updatedMeeting,
+        existingMeeting,
+        changedFields,
+        shouldResetToPending,
+        isTimeOrRoomChanged,
+        approvers,
+        req.user?.role || "Unknown"
+      );
 
       console.log("=== 🔔 END EMAIL NOTIFICATION (Any Change) ===");
     }
@@ -1015,7 +992,7 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
 export const approveOrRejectMeeting = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // ID dari booking meeting
-    const { status, remark } = req.body; // 'APPROVED' atau 'REJECTED', and remark for rejection
+    const { status, remark = "" } = req.body; // 'APPROVED' atau 'REJECTED', and remark for rejection
     const approverId = req.user?.id;
     const approverRole = req.user?.role;
 
@@ -1235,31 +1212,7 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
         const approverName =
           currentApprover?.approver?.fullName || "Unknown Approver";
 
-        const subject = "Meeting Rejected Notification";
-        const html = `
-          <p>Dear ${userName},</p>
-          <p>Your meeting booking with agenda "${
-            meeting.agenda
-          }" has been rejected by ${approverName}.</p>
-          <p><strong>Reason:</strong> ${
-            remark || "No specific reason provided"
-          }</p>
-          <p>If you have any questions about this rejection, please contact your supervisor or the meeting approver.</p>
-          <p>You can view your meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
-          <p>Thank you.</p>
-        `;
-
-        try {
-          if (userEmail) {
-            await sendEmail(userEmail, subject, html);
-          }
-          // Send email to admins
-          for (const adminEmail of adminApprovers) {
-            await sendEmail(adminEmail, subject, html);
-          }
-        } catch (error) {
-          console.error("Failed to send immediate rejection email:", error);
-        }
+        await sendMeetingRejectionEmail(meeting, remark, approverName);
       }
     }
 
@@ -1288,26 +1241,7 @@ export const approveOrRejectMeeting = async (req: Request, res: Response) => {
           .filter((a) => a.approver.role === UserRole.ADMIN)
           .map((a) => a.approver.email);
 
-        const subject = "Meeting Approved Notification";
-        const html = `
-          <p>Dear ${userName},</p>
-          <p>Your meeting booking with agenda "${meeting.agenda}" has been fully approved.</p>
-          <p>You can view your approved meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
-          <p>Thank you.</p>
-        `;
-
-        try {
-          if (userEmail) {
-            // Send email to user
-            await sendEmail(userEmail, subject, html);
-          }
-          // Send email to admins
-          for (const adminEmail of adminApprovers) {
-            await sendEmail(adminEmail, subject, html);
-          }
-        } catch (error) {
-          console.error("Failed to send final approval email:", error);
-        }
+        await sendMeetingApprovalEmail(meeting);
       }
     }
 
@@ -1443,7 +1377,7 @@ export const cancelMeeting = async (req: Request, res: Response) => {
               <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
               ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
             </ul>
-            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:8080/manage">http://mentor.gtim.local:8080/manage</a>.</p>
             <p>Thank you.</p>
           `;
         } else if (userRole === UserRole.SECTION_HEAD) {
@@ -1473,7 +1407,7 @@ export const cancelMeeting = async (req: Request, res: Response) => {
               <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
               ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
             </ul>
-            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:8080/manage">http://mentor.gtim.local:8080/manage</a>.</p>
             <p>Thank you.</p>
           `;
         } else {
@@ -1506,23 +1440,16 @@ export const cancelMeeting = async (req: Request, res: Response) => {
               <li><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</li>
               ${remark ? `<li><strong>Reason:</strong> ${remark}</li>` : ""}
             </ul>
-            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
+            <p>Please update your records accordingly. You can view all meetings at <a href="http://mentor.gtim.local:8080/manage">http://mentor.gtim.local:8080/manage</a>.</p>
             <p>Thank you.</p>
           `;
         }
 
-        // Send email to all recipients
-        for (const recipient of notificationRecipients) {
-          try {
-            await sendEmail(recipient.email, subject, html);
-          } catch (emailError) {
-            console.error(
-              "Failed to send cancellation email to",
-              recipient.email,
-              emailError
-            );
-          }
-        }
+        await sendMeetingCancellationEmail(
+          meetingDetails,
+          remark || "",
+          userRole || "Unknown"
+        );
       }
     } catch (emailError) {
       console.error("Error sending cancellation notifications:", emailError);
