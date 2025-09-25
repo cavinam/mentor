@@ -689,6 +689,9 @@ export const updateMeeting = async (req: Request, res: Response) => {
       existingMeeting.overallStatus === BookingStatus.APPROVED ||
       isTimeOrRoomChanged;
 
+    // Send notification for ANY meeting update with ANY field change
+    const shouldNotifyApprovers = true; // Always notify for any update
+
     const updatedMeeting = await prisma.meeting.update({
       where: { id: meetingId },
       data: {
@@ -735,11 +738,150 @@ export const updateMeeting = async (req: Request, res: Response) => {
       });
     }
 
-    if (shouldResetToPending) {
-      await prisma.meetingApproval.updateMany({
-        where: { meetingId: meetingId },
-        data: { status: ApprovalStatus.PENDING },
+    if (shouldNotifyApprovers) {
+      // ===============================================
+      // EMAIL NOTIFICATION: Send to approvers for ANY meeting update
+      // ===============================================
+      console.log(
+        "=== 🔔 EMAIL NOTIFICATION: Meeting Updated (Any Change) ==="
+      );
+      console.log("📅 Meeting ID:", meetingId);
+      console.log("📊 Previous Status:", existingMeeting.overallStatus);
+      console.log("📋 Current Status:", updatedMeeting.overallStatus);
+      console.log("🔄 Is Time/Room Changed:", isTimeOrRoomChanged);
+      console.log("📋 Should Reset to Pending:", shouldResetToPending);
+      console.log("📧 Notification: ALWAYS SENT for any field change");
+
+      const approvers = await prisma.user.findMany({
+        where: {
+          OR: [
+            { role: UserRole.ADMIN },
+            { role: UserRole.HRGA_MANAGER },
+            {
+              role: UserRole.SECTION_HEAD,
+              departmentId: departmentId,
+            },
+          ],
+        },
+        select: { id: true, email: true, fullName: true, role: true },
       });
+
+      console.log("👥 Total approvers to notify:", approvers.length);
+      console.log(
+        "📧 Approvers emails:",
+        approvers.map((a) => a.email).join(", ")
+      );
+
+      // Determine email content based on the type of update
+      let subject = "Meeting Updated Notification";
+      let updateType = "General update";
+
+      if (shouldResetToPending) {
+        subject = "Meeting Updated - Re-approval Required";
+        updateType = isTimeOrRoomChanged
+          ? "Time/Room Change"
+          : "Status Reset Required";
+      } else if (isTimeOrRoomChanged) {
+        updateType = "Time or Room Modified";
+      } else {
+        updateType = "Meeting Details Updated";
+      }
+
+      // Track what fields were actually changed
+      const changedFields: string[] = [];
+      if (agenda !== existingMeeting.agenda) changedFields.push("Agenda");
+      if (request !== existingMeeting.request)
+        changedFields.push("Request/Notes");
+      if (
+        startDate &&
+        new Date(startDate).toISOString() !==
+          existingMeeting.startDate?.toISOString()
+      )
+        changedFields.push("Start Date");
+      if (
+        endDate &&
+        new Date(endDate).toISOString() !==
+          existingMeeting.endDate?.toISOString()
+      )
+        changedFields.push("End Date");
+      if (startTime !== existingMeeting.startTime)
+        changedFields.push("Start Time");
+      if (endTime !== existingMeeting.endTime) changedFields.push("End Time");
+      if (visitorName !== existingMeeting.visitorName)
+        changedFields.push("Visitor Name");
+      if (companyName !== existingMeeting.companyName)
+        changedFields.push("Company Name");
+      if (gtimName !== existingMeeting.gtimName)
+        changedFields.push("GTIM Name");
+      if (meetingRoomId !== existingMeeting.meetingRoomId)
+        changedFields.push("Meeting Room");
+      if (departmentId !== existingMeeting.departmentId)
+        changedFields.push("Department");
+      if (equipmentIds) changedFields.push("Equipment");
+
+      console.log(
+        "📝 Changed Fields:",
+        changedFields.length > 0
+          ? changedFields.join(", ")
+          : "No specific fields tracked"
+      );
+
+      for (const approver of approvers) {
+        if (
+          approver.role === UserRole.SECTION_HEAD ||
+          approver.role === UserRole.HRGA_MANAGER ||
+          approver.role === UserRole.ADMIN
+        ) {
+          const html = `
+            <p>Dear ${approver.fullName},</p>
+            <p>A meeting booking has been updated. Here are the details:</p>
+            <p><strong>Meeting Information:</strong></p>
+            <ul>
+              <li><strong>Agenda:</strong> ${updatedMeeting.agenda}</li>
+              <li><strong>Updated by:</strong> ${req.user?.role} user</li>
+              <li><strong>Previous Status:</strong> ${
+                existingMeeting.overallStatus
+              }</li>
+              <li><strong>Current Status:</strong> ${
+                updatedMeeting.overallStatus
+              }</li>
+              <li><strong>Update Type:</strong> ${updateType}</li>
+              ${
+                changedFields.length > 0
+                  ? `<li><strong>Modified Fields:</strong> ${changedFields.join(
+                      ", "
+                    )}</li>`
+                  : ""
+              }
+              ${
+                shouldResetToPending
+                  ? `<li><strong>Action Required:</strong> Please review and approve the updated booking</li>`
+                  : ""
+              }
+            </ul>
+            <p>Please <a href="http://mentor.gtim.local:80/approvals">log in to the system</a> to review the updated booking.</p>
+            <p>Thank you.</p>
+          `;
+
+          console.log(
+            `📤 Sending email to ${approver.fullName} (${approver.email}) - Role: ${approver.role} - Update: ${updateType}`
+          );
+
+          try {
+            await sendEmail(approver.email, subject, html);
+            console.log(
+              `✅ Email sent successfully to ${approver.email} - ${updateType}`
+            );
+          } catch (error) {
+            console.error(
+              `❌ Failed to send email to ${approver.email}:`,
+              error
+            );
+          }
+        }
+      }
+
+      console.log("=== 🔔 END EMAIL NOTIFICATION (Any Change) ===");
     }
 
     await prisma.history.create({
@@ -751,74 +893,22 @@ export const updateMeeting = async (req: Request, res: Response) => {
       },
     });
 
-    // Send email notification for meeting update
-    try {
-      const meetingDetails = await prisma.meeting.findUnique({
-        where: { id: meetingId },
-        include: {
-          user: { select: { fullName: true, email: true } },
-          department: { select: { id: true, name: true } },
-          meetingRoom: { select: { name: true } },
-        },
-      });
-
-      if (meetingDetails) {
-        // Get HRGA Manager, Section Head from the department, and Admin users
-        const notificationRecipients = await prisma.user.findMany({
-          where: {
-            OR: [
-              { role: UserRole.HRGA_MANAGER },
-              { role: UserRole.ADMIN },
-              {
-                role: UserRole.SECTION_HEAD,
-                departmentId: meetingDetails.departmentId,
-              },
-            ],
-          },
-          select: { id: true, email: true, fullName: true, role: true },
-        });
-
-        const updaterName = meetingDetails.user?.fullName || "Unknown User";
-        const subject = "Meeting Updated Notification";
-        const html = `
-          <p>Dear Team,</p>
-          <p>A meeting has been updated in the system.</p>
-          <p><strong>Meeting Details:</strong></p>
-          <ul>
-            <li><strong>Agenda:</strong> ${meetingDetails.agenda}</li>
-            <li><strong>Department:</strong> ${
-              meetingDetails.department?.name
-            }</li>
-            <li><strong>Meeting Room:</strong> ${
-              meetingDetails.meetingRoom?.name || "Genba Visit"
-            }</li>
-            <li><strong>Updated by:</strong> ${updaterName}</li>
-            <li><strong>Update Date:</strong> ${new Date().toLocaleDateString()}</li>
-          </ul>
-          <p>Please review the updated meeting details in the system at <a href="http://mentor.gtim.local:80/manage">http://mentor.gtim.local:80/manage</a>.</p>
-          <p>Thank you.</p>
-        `;
-
-        // Send email to all recipients
-        for (const recipient of notificationRecipients) {
-          try {
-            await sendEmail(recipient.email, subject, html);
-            console.log("Update email sent to", recipient.email);
-          } catch (emailError) {
-            console.error(
-              "Failed to send update email to",
-              recipient.email,
-              emailError
-            );
-          }
-        }
-      } else {
-        console.log("No reception found.");
-      }
-    } catch (emailError) {
-      console.error("Error sending update notifications:", emailError);
-      // Don't fail the update if email fails
-    }
+    // ===============================================
+    // DEBUG: GENERAL UPDATE SECTION
+    // ===============================================
+    console.log("=== 🐛 DEBUG: Meeting Update Completed (Any Change) ===");
+    console.log("📅 Meeting ID:", meetingId);
+    console.log("👤 User ID:", userId);
+    console.log("🏢 User Role:", req.user?.role);
+    console.log("🔄 Is Time/Room Changed:", isTimeOrRoomChanged);
+    console.log("📊 Should Reset to Pending:", shouldResetToPending);
+    console.log("📧 Should Notify Approvers: ALWAYS (for any field change)");
+    console.log("📋 Previous Status:", existingMeeting.overallStatus);
+    console.log("📋 Current Status:", updatedMeeting.overallStatus);
+    console.log("✅ Update operation completed successfully");
+    console.log(
+      "📧 Email notifications sent to all approvers for any field changes"
+    );
 
     return res.status(200).json(updatedMeeting);
   } catch (error: any) {
