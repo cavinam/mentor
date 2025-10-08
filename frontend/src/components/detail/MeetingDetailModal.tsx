@@ -148,11 +148,15 @@ export default function MeetingDetailModal({
                 onChange={handleChange}
                 disabled={
                   !isEditing ||
-                  (userRole !== "ADMIN" && userRole !== "HRGA_MANAGER")
+                  !userRole ||
+                  (userRole.toUpperCase() !== "ADMIN" &&
+                    userRole.toUpperCase() !== "HRGA_MANAGER")
                 }
                 className={`block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 ${
                   isEditing &&
-                  (userRole === "ADMIN" || userRole === "HRGA_MANAGER")
+                  userRole &&
+                  (userRole.toUpperCase() === "ADMIN" ||
+                    userRole.toUpperCase() === "HRGA_MANAGER")
                     ? "bg-white text-gray-900 cursor-auto"
                     : "bg-gray-100 text-gray-500 cursor-not-allowed"
                 }`}
