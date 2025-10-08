@@ -342,7 +342,7 @@ export default function CalendarPage() {
         combinedString,
         ["YYYY-MM-DD HH:mm:ss", "YYYY-MM-DD HH:mm"],
         true
-      );
+      ).local(); // Parse as local time explicitly
       return m.isValid() ? m.toDate() : null;
     }
 
@@ -352,7 +352,7 @@ export default function CalendarPage() {
         ? isoStr.replace("Z", "")
         : isoStr;
 
-      const m = moment(localIsoStr);
+      const m = moment(localIsoStr).local(); // Parse as local time explicitly
       return m.isValid() ? m.toDate() : null;
     }
 
@@ -479,14 +479,17 @@ export default function CalendarPage() {
         })
         .filter(Boolean) as CalendarEvent[];
 
-      const filtered = _meetingRoomId
-        ? formattedEvents.filter((ev) => ev.meetingRoomId === _meetingRoomId)
-        : formattedEvents;
+      const filtered =
+        _meetingRoomId === "genba"
+          ? formattedEvents.filter((ev) => ev.isGenbaVisit)
+          : _meetingRoomId
+          ? formattedEvents.filter((ev) => ev.meetingRoomId === _meetingRoomId)
+          : formattedEvents;
 
       console.log("Calendar: total fetched events=", formattedEvents.length);
       console.log(
-        "Calendar: filtered by room=",
-        _meetingRoomId || "(ALL)",
+        "Calendar: filtered by=",
+        _meetingRoomId === "genba" ? "Genba Visits" : _meetingRoomId || "(ALL)",
         "count=",
         filtered.length
       );
@@ -1028,7 +1031,7 @@ export default function CalendarPage() {
         {/* Pilih Meeting Room */}
         <div className="grid grid-cols-1 sm:grid-cols-3 items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold text-gray-800 text-center sm:text-left">
-            {selectedMeetingRoomId && (
+            {selectedMeetingRoomId && selectedMeetingRoomId !== "genba" && (
               <span className="text-gray-700">
                 (
                 {
@@ -1037,6 +1040,9 @@ export default function CalendarPage() {
                 }
                 )
               </span>
+            )}
+            {selectedMeetingRoomId === "genba" && (
+              <span className="text-gray-700">(Genba Visits)</span>
             )}
           </h1>
           <div className="text-center">
@@ -1086,7 +1092,8 @@ export default function CalendarPage() {
                 className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-300
                   focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-lg font-semibold px-4 py-2"
               >
-                <option value="">Meeting Room</option>
+                <option value="">All Meeting Room</option>
+                <option value="genba">Genba Visit</option>
                 {meetingRooms.map((room) => (
                   <option key={room.id} value={room.id}>
                     {room.name}
@@ -1130,6 +1137,7 @@ export default function CalendarPage() {
         meetingRooms={meetingRooms}
         equipmentList={equipmentList}
         equipmentUnavailableIds={createEquipUnavailableIds}
+        userRole={currentUserRole}
         onClose={() => setIsCreateOpen(false)}
         onChange={handleCreateChange}
         onSuccess={handleCreateSuccess}
@@ -1145,6 +1153,7 @@ export default function CalendarPage() {
         meetingRooms={meetingRooms}
         equipmentList={equipmentList}
         equipmentUnavailableIds={editEquipUnavailableIds}
+        userRole={currentUserRole}
         closeModal={closeModal}
         handleChange={handleChange}
         handleSave={handleSave}

@@ -12,6 +12,7 @@ export interface MeetingDetailModalProps {
   equipmentUnavailableIds?: string[];
   // Loading state for save operation
   isSaving?: boolean;
+  userRole?: string;
   closeModal: () => void;
   handleChange: (
     e: React.ChangeEvent<

@@ -22,6 +22,7 @@ export default function MeetingDetailModal({
   meetingRooms = [],
   handleChange,
   isSaving = false,
+  userRole,
 }: MeetingDetailModalProps) {
   // Pastikan formData.equipment adalah array of {id, name}
   const [selectedEquipments, setSelectedEquipments] = useState<string[]>(
@@ -145,8 +146,16 @@ export default function MeetingDetailModal({
                 name="departmentId"
                 value={formData.departmentId || ""}
                 onChange={handleChange}
-                disabled={true}
-                className="block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
+                disabled={
+                  !isEditing ||
+                  (userRole !== "ADMIN" && userRole !== "HRGA_MANAGER")
+                }
+                className={`block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 ${
+                  isEditing &&
+                  (userRole === "ADMIN" || userRole === "HRGA_MANAGER")
+                    ? "bg-white text-gray-900 cursor-auto"
+                    : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                }`}
               >
                 <option value="">
                   {formData.departmentId ? "—" : "Pilih Department"}

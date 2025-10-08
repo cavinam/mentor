@@ -988,6 +988,7 @@ export default function ManageMeetingsPage() {
           meetingRooms={meetingRooms}
           equipmentList={equipmentList}
           isSaving={isSaving}
+          userRole={role}
           closeModal={closeMeetingDetail}
           handleChange={(e) => {
             const { name, value } = e.target;

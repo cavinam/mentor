@@ -18,6 +18,7 @@ export interface AddScheduleModalProps {
   meetingRooms: MeetingRoom[];
   equipmentList: { id: string; name: string }[];
   equipmentUnavailableIds?: string[];
+  userRole?: string;
   onClose: () => void;
   onChange: (
     e: React.ChangeEvent<
@@ -35,6 +36,7 @@ export default function AddScheduleModal({
   meetingRooms,
   equipmentList,
   equipmentUnavailableIds,
+  userRole,
   onClose,
   onChange,
   onSuccess,
@@ -210,8 +212,12 @@ export default function AddScheduleModal({
                 name="departmentId"
                 value={formData.departmentId || ""}
                 onChange={onChange}
-                disabled={true}
-                className="block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
+                disabled={userRole !== "ADMIN" && userRole !== "HRGA_MANAGER"}
+                className={`block w-full rounded-md border border-gray-300 shadow-sm sm:text-sm px-3 py-2 ${
+                  userRole === "ADMIN" || userRole === "HRGA_MANAGER"
+                    ? "bg-white text-gray-900 cursor-auto"
+                    : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                }`}
               >
                 <option value="">
                   {formData.departmentId ? "—" : "Pilih Department"}
