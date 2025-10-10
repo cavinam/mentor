@@ -290,7 +290,8 @@ export default function ApprovalsPage() {
   const filteredItems = items.filter((m) => {
     // Only show meetings that are still pending approval
     // Exclude APPROVED and REJECTED meetings automatically
-    const allowedStatuses = ["PENDING", "PARTIALLY_APPROVED"];
+    const allowedStatuses =
+      role === "SECTION_HEAD" ? ["PENDING"] : ["PENDING", "PARTIALLY_APPROVED"];
     const isAllowed = allowedStatuses.includes(m.overallStatus || "");
     return isAllowed;
   });

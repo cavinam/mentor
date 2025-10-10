@@ -888,6 +888,7 @@ export default function ManageMeetingsPage() {
                   );
                   const now = moment();
                   const canCancel = now.isBefore(meetingEndDateTime);
+                  const canEdit = now.isBefore(meetingEndDateTime);
                   return (
                     <tr key={m.id} className="border-b hover:bg-gray-50">
                       <td className="px-3 py-2 text-sm text-gray-800">
@@ -941,8 +942,13 @@ export default function ManageMeetingsPage() {
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-700 flex gap-2">
                         <button
-                          onClick={() => openMeetingDetail(m)}
-                          className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          onClick={() => canEdit && openMeetingDetail(m)}
+                          disabled={!canEdit}
+                          className={`px-2 py-1 rounded text-white ${
+                            canEdit
+                              ? "bg-blue-600 hover:bg-blue-700"
+                              : "bg-gray-400 cursor-not-allowed"
+                          }`}
                         >
                           Edit
                         </button>
