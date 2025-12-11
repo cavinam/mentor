@@ -1,0 +1,29 @@
+// Constants and enums
+export const USER_ROLES = {
+  ADMIN: 'ADMIN',
+  SECTION_HEAD: 'SECTION_HEAD',
+  HRGA_MANAGER: 'HRGA_MANAGER',
+  USER: 'USER',
+} as const;
+
+export const BOOKING_STATUS = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELED: 'CANCELED',
+  PARTIALLY_APPROVED: 'PARTIALLY_APPROVED',
+} as const;
+
+export const APPROVAL_STATUS = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export const EQUIPMENT_TYPES = {
+  PROJECTOR: 'PROJECTOR',
+  SPEAKER: 'SPEAKER',
+  CAMERA: 'CAMERA',
+  HEADPHONE: 'HEADPHONE',
+  OTHER: 'OTHER',
+} as const;
