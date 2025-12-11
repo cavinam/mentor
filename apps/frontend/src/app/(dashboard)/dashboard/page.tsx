@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { RoomAvailabilityChecker } from '@/components/guest/RoomAvailabilityChecker';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -35,7 +36,11 @@ export default function DashboardPage() {
           startDate: today,
           endDate: today,
         });
-        setTodayBookings(response.data);
+        // Filter out CANCELED and REJECTED bookings
+        const filteredBookings = response.data.filter(
+          (b) => b.overallStatus !== 'CANCELED' && b.overallStatus !== 'REJECTED'
+        );
+        setTodayBookings(filteredBookings);
       } catch (err) {
         console.error('Error fetching today bookings:', err);
       } finally {
@@ -419,6 +424,9 @@ export default function DashboardPage() {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* Room Availability Checker */}
+          <RoomAvailabilityChecker />
 
           {/* Quick Actions */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

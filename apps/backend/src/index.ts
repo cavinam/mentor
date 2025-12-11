@@ -15,6 +15,7 @@ import equipmentRoutes from './routes/equipment.routes';
 import approvalRoutes from './routes/approvals.routes';
 import approverRoutes from './routes/approvers.routes';
 import historyRoutes from './routes/history.routes';
+import publicRoutes from './routes/public.routes';
 
 const app: ReturnType<typeof express> = express();
 
@@ -42,6 +43,7 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/approvers', approverRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/public', publicRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

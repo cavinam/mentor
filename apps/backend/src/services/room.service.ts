@@ -15,6 +15,89 @@ export const roomService = {
     return rooms;
   },
 
+  // Check availability of all rooms for a given date/time range
+  checkAllAvailability: async (params: {
+    date: string;
+    startTime: string;
+    endTime: string;
+  }) => {
+    const { date, startTime, endTime } = params;
+    const checkDate = new Date(date);
+
+    // Get all rooms
+    const allRooms = await prisma.meetingRoom.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    // Get all meetings on that date that are not canceled/rejected/deleted
+    const meetingsOnDate = await prisma.meeting.findMany({
+      where: {
+        startDate: { lte: checkDate },
+        endDate: { gte: checkDate },
+        isDeleted: false,
+        overallStatus: {
+          notIn: ['CANCELED', 'REJECTED'],
+        },
+        meetingRoomId: { not: null },
+      },
+      include: {
+        meetingRoom: true,
+        user: {
+          select: { fullName: true },
+        },
+        department: {
+          select: { name: true },
+        },
+      },
+    });
+
+    // Check availability for each room
+    const roomsWithAvailability = allRooms.map((room) => {
+      // Find meetings in this room on the date
+      const roomMeetings = meetingsOnDate.filter(
+        (m) => m.meetingRoomId === room.id
+      );
+
+      // Check for time conflicts
+      const conflictingMeetings = roomMeetings.filter((meeting) => {
+        if (meeting.allDay) return true;
+
+        const meetingStart = meeting.startTime;
+        const meetingEnd = meeting.endTime;
+
+        // Check overlap
+        return (
+          (startTime >= meetingStart && startTime < meetingEnd) ||
+          (endTime > meetingStart && endTime <= meetingEnd) ||
+          (startTime <= meetingStart && endTime >= meetingEnd)
+        );
+      });
+
+      return {
+        ...room,
+        isAvailable: conflictingMeetings.length === 0,
+        conflictingMeetings: conflictingMeetings.map((m) => ({
+          id: m.id,
+          agenda: m.agenda,
+          startTime: m.startTime,
+          endTime: m.endTime,
+          bookedBy: m.user?.fullName || 'Unknown',
+          department: m.department?.name || '-',
+        })),
+      };
+    });
+
+    return {
+      date,
+      startTime,
+      endTime,
+      rooms: roomsWithAvailability,
+      availableCount: roomsWithAvailability.filter((r) => r.isAvailable).length,
+      totalCount: roomsWithAvailability.length,
+    };
+  },
+
+
   getById: async (id: string) => {
     const room = await prisma.meetingRoom.findUnique({
       where: { id },
@@ -60,7 +143,7 @@ export const roomService = {
     // Check time overlap
     const hasConflict = conflictingMeetings.some((meeting) => {
       if (meeting.allDay) return true;
-      
+
       // Simple time overlap check
       const requestStartTime = startTime;
       const requestEndTime = endTime;

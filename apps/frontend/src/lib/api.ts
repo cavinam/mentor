@@ -36,8 +36,9 @@ api.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('user');
 
-        // Only redirect if not already on login page
-        if (!window.location.pathname.includes('/login')) {
+        // Only redirect if not already on login page or guest view page
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes('/login') && !currentPath.includes('/view')) {
           window.location.href = '/login';
         }
       }
