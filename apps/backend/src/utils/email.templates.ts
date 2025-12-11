@@ -1,4 +1,5 @@
 // Email templates for meeting notifications
+import { config } from '../config/env';
 
 export interface MeetingEmailData {
   meetingId: string;
@@ -19,36 +20,6 @@ export interface MeetingEmailData {
   remark?: string | null;
 }
 
-const baseStyles = `
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px 20px; text-align: center; }
-    .header h1 { color: #ffffff; margin: 0; font-size: 18px; }
-    .header p { color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 13px; }
-    .content { padding: 15px 20px; }
-    .content p { margin: 8px 0; font-size: 14px; }
-    .info-box { background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 10px 12px; margin: 12px 0; }
-    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 12px; margin-bottom: 8px; }
-    .status-pending { background-color: #fff3cd; color: #856404; }
-    .status-approved { background-color: #d4edda; color: #155724; }
-    .status-rejected { background-color: #f8d7da; color: #721c24; }
-    .status-canceled { background-color: #e2e3e5; color: #383d41; }
-    .footer { background-color: #f8f9fa; padding: 12px; text-align: center; color: #6c757d; font-size: 11px; }
-    .footer p { margin: 3px 0; }
-    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-    table td { padding: 5px 8px; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: top; }
-    table td:first-child { font-weight: 600; color: #555; width: 120px; white-space: nowrap; }
-  </style>
-`;
-
-const emailFooter = `
-  <div class="footer">
-    <p>Email ini dikirim otomatis oleh sistem Meeting Room Booking.</p>
-    <p>© ${new Date().getFullYear()} G-TIM. All rights reserved.</p>
-  </div>
-`;
-
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('id-ID', {
@@ -61,35 +32,76 @@ function formatDate(dateStr: string): string {
 
 function getMeetingDetailsTable(data: MeetingEmailData): string {
   return `
-    <table>
+    <table cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
       <tr>
-        <td>Agenda</td>
-        <td>${data.agenda}</td>
+        <td style="padding: 12px 16px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; width: 140px; font-size: 14px;">Agenda</td>
+        <td style="padding: 12px 16px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px; font-weight: 600;">${data.agenda}</td>
       </tr>
-      ${data.gtimName ? `<tr><td>Nama GTIM</td><td>${data.gtimName}</td></tr>` : ''}
-      ${data.visitorName ? `<tr><td>Nama Visitor</td><td>${data.visitorName}</td></tr>` : ''}
-      ${data.companyName ? `<tr><td>Perusahaan</td><td>${data.companyName}</td></tr>` : ''}
+      ${data.gtimName ? `
       <tr>
-        <td>Tanggal</td>
-        <td>${formatDate(data.startDate)}${data.startDate !== data.endDate ? ` - ${formatDate(data.endDate)}` : ''}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Nama GTIM</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.gtimName}</td>
+      </tr>` : ''}
+      ${data.visitorName ? `
+      <tr>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Nama Visitor</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.visitorName}</td>
+      </tr>` : ''}
+      ${data.companyName ? `
+      <tr>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Perusahaan</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.companyName}</td>
+      </tr>` : ''}
+      <tr>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Tanggal</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${formatDate(data.startDate)}${data.startDate !== data.endDate ? ` - ${formatDate(data.endDate)}` : ''}</td>
       </tr>
       <tr>
-        <td>Waktu</td>
-        <td>${data.startTime} - ${data.endTime}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Waktu</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.startTime} - ${data.endTime}</td>
       </tr>
       <tr>
-        <td>Lokasi</td>
-        <td>${data.isGenbaVisit ? 'Genba Visit' : (data.meetingRoom || '-')}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Lokasi</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.isGenbaVisit ? 'Genba Visit' : (data.meetingRoom || '-')}</td>
       </tr>
       <tr>
-        <td>Department</td>
-        <td>${data.departmentName}</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Department</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.departmentName}</td>
       </tr>
       <tr>
-        <td>Dibuat oleh</td>
-        <td>${data.creatorName} (${data.creatorEmail})</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Dibuat oleh</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.creatorName} (${data.creatorEmail})</td>
       </tr>
-      ${data.request ? `<tr><td>Request Khusus</td><td>${data.request}</td></tr>` : ''}
+      ${data.request ? `
+      <tr>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Request Khusus</td>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.request}</td>
+      </tr>` : ''}
+    </table>
+  `;
+}
+
+// Get approval action buttons HTML with inline styles (works in all email clients)
+function getApprovalActionButtons(meetingId: string): string {
+  const approvalUrl = `${config.frontendUrl}/approvals?meetingId=${meetingId}`;
+  return `
+    <table cellpadding="0" cellspacing="0" style="width: 100%; margin: 24px 0;">
+      <tr>
+        <td align="center">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="border-radius: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <a href="${approvalUrl}" target="_blank" style="display: inline-block; padding: 16px 32px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
+                  ✅ Approve / Reject Meeting
+                </a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin: 12px 0 0 0; font-size: 13px; color: #64748b;">
+            Klik tombol di atas untuk memproses approval
+          </p>
+        </td>
+      </tr>
     </table>
   `;
 }
@@ -99,26 +111,65 @@ export function meetingCreatedTemplate(data: MeetingEmailData, recipientName: st
   return `
     <!DOCTYPE html>
     <html>
-    <head>${baseStyles}</head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>🗓️ Permintaan Meeting Baru</h1>
-          <p>Membutuhkan persetujuan Anda</p>
-        </div>
-        <div class="content">
-          <p>Halo <strong>${recipientName}</strong>,</p>
-          <p>Ada permintaan meeting baru yang membutuhkan persetujuan Anda:</p>
-          
-          <div class="info-box">
-            <span class="status-badge status-pending">⏳ Menunggu Persetujuan</span>
-            ${getMeetingDetailsTable(data)}
-          </div>
-          
-          <p>Silakan login ke sistem untuk menyetujui atau menolak permintaan ini.</p>
-        </div>
-        ${emailFooter}
-      </div>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%; background-color: #f1f5f9; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 24px; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff;">📅 Permintaan Meeting Baru</h1>
+                  <p style="margin: 8px 0 0 0; font-size: 15px; color: rgba(255,255,255,0.9);">Membutuhkan persetujuan Anda</p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">
+                    Halo <strong style="color: #1e293b;">${recipientName}</strong>,
+                  </p>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+                    Ada permintaan meeting baru yang membutuhkan persetujuan Anda:
+                  </p>
+                  
+                  <!-- Status Badge -->
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+                    <tr>
+                      <td style="background-color: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                        ⏳ Menunggu Persetujuan
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- Meeting Details -->
+                  ${getMeetingDetailsTable(data)}
+                  
+                  <!-- Action Button -->
+                  ${getApprovalActionButtons(data.meetingId)}
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">
+                    Email ini dikirim otomatis oleh sistem Meeting Room Booking.
+                  </p>
+                  <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                    © ${new Date().getFullYear()} G-TIM. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;
@@ -129,26 +180,65 @@ export function sectionHeadApprovedTemplate(data: MeetingEmailData, recipientNam
   return `
     <!DOCTYPE html>
     <html>
-    <head>${baseStyles}</head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>✅ Meeting Disetujui Section Head</h1>
-          <p>Membutuhkan persetujuan HRGA Manager</p>
-        </div>
-        <div class="content">
-          <p>Halo <strong>${recipientName}</strong>,</p>
-          <p>Meeting berikut telah disetujui oleh Section Head <strong>${approverName}</strong> dan membutuhkan persetujuan Anda:</p>
-          
-          <div class="info-box">
-            <span class="status-badge status-pending">⏳ Menunggu Persetujuan HRGA</span>
-            ${getMeetingDetailsTable(data)}
-          </div>
-          
-          <p>Silakan login ke sistem untuk menyetujui atau menolak permintaan ini.</p>
-        </div>
-        ${emailFooter}
-      </div>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%; background-color: #f1f5f9; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 32px 24px; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff;">✅ Disetujui Section Head</h1>
+                  <p style="margin: 8px 0 0 0; font-size: 15px; color: rgba(255,255,255,0.9);">Membutuhkan persetujuan HRGA Manager</p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">
+                    Halo <strong style="color: #1e293b;">${recipientName}</strong>,
+                  </p>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+                    Meeting berikut telah disetujui oleh Section Head <strong style="color: #059669;">${approverName}</strong> dan membutuhkan persetujuan final Anda:
+                  </p>
+                  
+                  <!-- Status Badge -->
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+                    <tr>
+                      <td style="background-color: #dbeafe; color: #1e40af; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                        ⏳ Menunggu Persetujuan HRGA
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- Meeting Details -->
+                  ${getMeetingDetailsTable(data)}
+                  
+                  <!-- Action Button -->
+                  ${getApprovalActionButtons(data.meetingId)}
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">
+                    Email ini dikirim otomatis oleh sistem Meeting Room Booking.
+                  </p>
+                  <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                    © ${new Date().getFullYear()} G-TIM. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;
@@ -159,26 +249,66 @@ export function hrgaApprovedTemplate(data: MeetingEmailData, recipientName: stri
   return `
     <!DOCTYPE html>
     <html>
-    <head>${baseStyles}</head>
-    <body>
-      <div class="container">
-        <div class="header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-          <h1>🎉 Meeting Telah Disetujui</h1>
-          <p>Semua persetujuan telah lengkap</p>
-        </div>
-        <div class="content">
-          <p>Halo <strong>${recipientName}</strong>,</p>
-          <p>Meeting berikut telah <strong>disetujui sepenuhnya</strong> dan siap dilaksanakan:</p>
-          
-          <div class="info-box" style="border-left-color: #28a745;">
-            <span class="status-badge status-approved">✅ Disetujui</span>
-            ${getMeetingDetailsTable(data)}
-          </div>
-          
-          <p>Silakan persiapkan meeting sesuai jadwal yang telah ditentukan.</p>
-        </div>
-        ${emailFooter}
-      </div>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%; background-color: #f1f5f9; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 32px 24px; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff;">🎉 Meeting Disetujui!</h1>
+                  <p style="margin: 8px 0 0 0; font-size: 15px; color: rgba(255,255,255,0.9);">Semua persetujuan telah lengkap</p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">
+                    Halo <strong style="color: #1e293b;">${recipientName}</strong>,
+                  </p>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+                    Meeting berikut telah <strong style="color: #16a34a;">disetujui sepenuhnya</strong> dan siap dilaksanakan:
+                  </p>
+                  
+                  <!-- Status Badge -->
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+                    <tr>
+                      <td style="background-color: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                        ✅ Disetujui
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- Meeting Details -->
+                  ${getMeetingDetailsTable(data)}
+                  
+                  <p style="margin: 24px 0 0 0; font-size: 14px; color: #475569; text-align: center;">
+                    Silakan persiapkan meeting sesuai jadwal yang telah ditentukan.
+                  </p>
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">
+                    Email ini dikirim otomatis oleh sistem Meeting Room Booking.
+                  </p>
+                  <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                    © ${new Date().getFullYear()} G-TIM. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;
@@ -189,25 +319,73 @@ export function meetingCanceledTemplate(data: MeetingEmailData, recipientName: s
   return `
     <!DOCTYPE html>
     <html>
-    <head>${baseStyles}</head>
-    <body>
-      <div class="container">
-        <div class="header" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
-          <h1>❌ Meeting Dibatalkan</h1>
-          <p>User telah membatalkan meeting</p>
-        </div>
-        <div class="content">
-          <p>Halo <strong>${recipientName}</strong>,</p>
-          <p>Meeting berikut telah <strong>dibatalkan</strong> oleh pemohon:</p>
-          
-          <div class="info-box" style="border-left-color: #6c757d;">
-            <span class="status-badge status-canceled">🚫 Dibatalkan</span>
-            ${getMeetingDetailsTable(data)}
-            ${cancelRemark ? `<p style="margin-top: 15px;"><strong>Alasan:</strong> ${cancelRemark}</p>` : ''}
-          </div>
-        </div>
-        ${emailFooter}
-      </div>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%; background-color: #f1f5f9; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); padding: 32px 24px; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff;">❌ Meeting Dibatalkan</h1>
+                  <p style="margin: 8px 0 0 0; font-size: 15px; color: rgba(255,255,255,0.9);">User telah membatalkan meeting</p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">
+                    Halo <strong style="color: #1e293b;">${recipientName}</strong>,
+                  </p>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+                    Meeting berikut telah <strong style="color: #64748b;">dibatalkan</strong> oleh pemohon:
+                  </p>
+                  
+                  <!-- Status Badge -->
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+                    <tr>
+                      <td style="background-color: #e2e8f0; color: #475569; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                        🚫 Dibatalkan
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- Meeting Details -->
+                  ${getMeetingDetailsTable(data)}
+                  
+                  ${cancelRemark ? `
+                  <table cellpadding="0" cellspacing="0" style="width: 100%; margin-top: 16px; background-color: #fef2f2; border-radius: 8px;">
+                    <tr>
+                      <td style="padding: 16px;">
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #991b1b;">Alasan Pembatalan:</p>
+                        <p style="margin: 0; font-size: 14px; color: #7f1d1d;">${cancelRemark}</p>
+                      </td>
+                    </tr>
+                  </table>
+                  ` : ''}
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">
+                    Email ini dikirim otomatis oleh sistem Meeting Room Booking.
+                  </p>
+                  <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                    © ${new Date().getFullYear()} G-TIM. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;
@@ -218,27 +396,77 @@ export function meetingRejectedTemplate(data: MeetingEmailData, recipientName: s
   return `
     <!DOCTYPE html>
     <html>
-    <head>${baseStyles}</head>
-    <body>
-      <div class="container">
-        <div class="header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
-          <h1>⛔ Meeting Ditolak</h1>
-          <p>Permintaan meeting tidak disetujui</p>
-        </div>
-        <div class="content">
-          <p>Halo <strong>${recipientName}</strong>,</p>
-          <p>Mohon maaf, permintaan meeting Anda telah <strong>ditolak</strong> oleh <strong>${rejectorName}</strong> (${rejectorRole}):</p>
-          
-          <div class="info-box" style="border-left-color: #dc3545;">
-            <span class="status-badge status-rejected">❌ Ditolak</span>
-            ${getMeetingDetailsTable(data)}
-            ${remark ? `<p style="margin-top: 15px;"><strong>Alasan penolakan:</strong> ${remark}</p>` : ''}
-          </div>
-          
-          <p>Silakan hubungi approver untuk informasi lebih lanjut atau ajukan permintaan baru.</p>
-        </div>
-        ${emailFooter}
-      </div>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%; background-color: #f1f5f9; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 32px 24px; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff;">⛔ Meeting Ditolak</h1>
+                  <p style="margin: 8px 0 0 0; font-size: 15px; color: rgba(255,255,255,0.9);">Permintaan meeting tidak disetujui</p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 24px;">
+                  <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">
+                    Halo <strong style="color: #1e293b;">${recipientName}</strong>,
+                  </p>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+                    Mohon maaf, permintaan meeting Anda telah <strong style="color: #dc2626;">ditolak</strong> oleh <strong>${rejectorName}</strong> (${rejectorRole}):
+                  </p>
+                  
+                  <!-- Status Badge -->
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+                    <tr>
+                      <td style="background-color: #fee2e2; color: #991b1b; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                        ❌ Ditolak
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- Meeting Details -->
+                  ${getMeetingDetailsTable(data)}
+                  
+                  ${remark ? `
+                  <table cellpadding="0" cellspacing="0" style="width: 100%; margin-top: 16px; background-color: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
+                    <tr>
+                      <td style="padding: 16px;">
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #991b1b;">Alasan Penolakan:</p>
+                        <p style="margin: 0; font-size: 14px; color: #7f1d1d;">${remark}</p>
+                      </td>
+                    </tr>
+                  </table>
+                  ` : ''}
+                  
+                  <p style="margin: 24px 0 0 0; font-size: 14px; color: #475569; text-align: center;">
+                    Silakan hubungi approver untuk informasi lebih lanjut atau ajukan permintaan baru.
+                  </p>
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b;">
+                    Email ini dikirim otomatis oleh sistem Meeting Room Booking.
+                  </p>
+                  <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                    © ${new Date().getFullYear()} G-TIM. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
   `;

@@ -26,9 +26,11 @@ export function GuestSidebar({ isCollapsed }: GuestSidebarProps) {
             {/* Logo/Brand */}
             <div className="p-3 border-b border-gray-200">
                 <div className="flex items-center gap-3 p-2">
-                    <div className="w-8 h-8 rounded-md bg-red-600 flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-5 h-5 text-white" />
-                    </div>
+                    <img
+                        src="/logo.png"
+                        alt="Mentor Logo"
+                        className="w-8 h-8 rounded-md object-contain flex-shrink-0"
+                    />
                     {!isCollapsed && (
                         <div className="flex-1 text-left min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">Mentor</p>

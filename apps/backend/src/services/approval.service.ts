@@ -36,11 +36,80 @@ export const approvalService = {
             meetingEquipments: {
               include: { equipment: true },
             },
+            approvals: {
+              include: {
+                approver: {
+                  select: {
+                    id: true,
+                    role: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+
+    // For ADMIN role, deduplicate by meetingId - show only one approval per meeting
+    // Prioritize showing Section Head approval first (as it should be processed first)
+    if (userRole === UserRole.ADMIN) {
+      const meetingMap = new Map<string, typeof approvals[0]>();
+
+      for (const approval of approvals) {
+        const meetingId = approval.meeting.id;
+        const existing = meetingMap.get(meetingId);
+
+        if (!existing) {
+          // First approval for this meeting
+          meetingMap.set(meetingId, approval);
+        } else {
+          // Check if current approval is from Section Head (prioritize it)
+          const currentApproverRecord = approval.meeting.approvals?.find(
+            (a) => a.id === approval.id
+          );
+          const existingApproverRecord = existing.meeting.approvals?.find(
+            (a) => a.id === existing.id
+          );
+
+          // Prefer Section Head approval over HRGA Manager
+          if (currentApproverRecord?.approver?.role === UserRole.SECTION_HEAD && existingApproverRecord?.approver?.role !== UserRole.SECTION_HEAD) {
+            meetingMap.set(meetingId, approval);
+          }
+        }
+      }
+
+      return Array.from(meetingMap.values());
+    }
+
+    // For HRGA_MANAGER role, filter out approvals for meetings where:
+    // - The department is NOT HRGA or Expatriate (these go directly to HRGA Manager)
+    // - Section Head approval still exists and is PENDING
+    if (userRole === UserRole.HRGA_MANAGER) {
+      return approvals.filter((approval) => {
+        const meeting = approval.meeting;
+        const departmentName = meeting.department?.name?.toUpperCase() || '';
+
+        // HRGA and Expatriate departments bypass Section Head
+        if (departmentName === 'HRGA' || departmentName === 'EXPATRIATE') {
+          return true;
+        }
+
+        // For other departments, only show if Section Head has already approved
+        const sectionHeadApproval = meeting.approvals?.find(
+          (a: { approver: { role: UserRole }, status: ApprovalStatus }) => a.approver?.role === UserRole.SECTION_HEAD
+        );
+
+        // If no Section Head approval exists, or Section Head has already approved, show the meeting
+        if (!sectionHeadApproval || sectionHeadApproval.status === ApprovalStatus.APPROVED) {
+          return true;
+        }
+
+        // Section Head approval is still pending, don't show to HRGA Manager
+        return false;
+      });
+    }
 
     return approvals;
   },

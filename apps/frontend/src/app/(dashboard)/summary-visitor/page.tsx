@@ -26,7 +26,7 @@ const MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-export default function HistoryPage() {
+export default function SummaryVisitorPage() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -127,7 +127,7 @@ export default function HistoryPage() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Visit History</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Summary Visitor</h1>
         <p className="text-gray-600 text-sm">Riwayat kunjungan PT dalam 1 bulan</p>
       </div>
 

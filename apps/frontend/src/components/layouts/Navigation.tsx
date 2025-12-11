@@ -47,7 +47,7 @@ export function Navigation({ isCollapsed = false }: NavigationProps) {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SECTION_HEAD', 'HRGA_MANAGER', 'USER'] },
     { href: '/calendar', label: 'Calendar', icon: Calendar, roles: ['ADMIN', 'SECTION_HEAD', 'HRGA_MANAGER', 'USER'] },
     { href: '/bookings', label: 'My Booking', icon: CalendarCheck, roles: ['ADMIN', 'SECTION_HEAD', 'HRGA_MANAGER', 'USER'] },
-    { href: '/history', label: 'History', icon: History, roles: ['ADMIN', 'HRGA_MANAGER'] },
+    { href: '/summary-visitor', label: 'Summary Visitor', icon: History, roles: ['ADMIN', 'HRGA_MANAGER'] },
     { href: '/approvals', label: 'Approvals', icon: ClipboardCheck, roles: ['ADMIN', 'SECTION_HEAD', 'HRGA_MANAGER'] },
   ];
 

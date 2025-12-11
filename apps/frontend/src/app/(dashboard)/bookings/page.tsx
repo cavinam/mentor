@@ -304,7 +304,12 @@ export default function BookingsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>{new Date(booking.startDate).toLocaleDateString()}</span>
+                        <span>
+                          {new Date(booking.startDate).toLocaleDateString()}
+                          {booking.endDate && booking.startDate !== booking.endDate && (
+                            <span> - {new Date(booking.endDate).toLocaleDateString()}</span>
+                          )}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                         <Clock className="w-4 h-4 text-gray-400" />
