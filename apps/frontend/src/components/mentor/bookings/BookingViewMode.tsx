@@ -71,94 +71,101 @@ export function BookingViewMode({ booking, onEdit, onClose, onSuccess }: Booking
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Meeting Details</h2>
 
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Date */}
           <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
+            <Calendar className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
               <p className="text-sm font-medium text-gray-700">Date</p>
-              <p className="text-gray-900">
+              <p className="text-gray-900 text-sm">
                 {formatDisplayDate(booking.startDate)}
                 {booking.startDate !== booking.endDate && ` - ${formatDisplayDate(booking.endDate)}`}
               </p>
             </div>
           </div>
 
+          {/* Time */}
           <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
+            <Clock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
               <p className="text-sm font-medium text-gray-700">Time</p>
-              <p className="text-gray-900">
+              <p className="text-gray-900 text-sm">
                 {booking.allDay ? 'All Day' : `${booking.startTime} - ${booking.endTime}`}
               </p>
             </div>
           </div>
 
+          {/* Room */}
           {booking.meetingRoom && (
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-              <div>
+              <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-700">Room</p>
-                <p className="text-gray-900">{booking.meetingRoom.name}</p>
+                <p className="text-gray-900 text-sm truncate">{booking.meetingRoom.name}</p>
                 {booking.meetingRoom.location && (
-                  <p className="text-sm text-gray-500">{booking.meetingRoom.location}</p>
+                  <p className="text-xs text-gray-500 truncate">{booking.meetingRoom.location}</p>
                 )}
               </div>
             </div>
           )}
 
+          {/* Organizer */}
           {booking.user && (
             <div className="flex items-start gap-3">
-              <Users className="w-5 h-5 text-gray-400 mt-0.5" />
-              <div>
+              <Users className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-700">Organizer</p>
-                <p className="text-gray-900">{booking.user.fullName}</p>
-                <p className="text-sm text-gray-500">{booking.user.email}</p>
+                <p className="text-gray-900 text-sm truncate">{booking.user.fullName}</p>
+                <p className="text-xs text-gray-500 truncate">{booking.user.email}</p>
               </div>
             </div>
           )}
 
+          {/* GTIM Name */}
           {booking.gtimName && (
             <div className="flex items-start gap-3">
-              <Users className="w-5 h-5 text-gray-400 mt-0.5" />
-              <div>
+              <Users className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-700">GTIM Name</p>
-                <p className="text-gray-900">{booking.gtimName}</p>
+                <p className="text-gray-900 text-sm truncate">{booking.gtimName}</p>
               </div>
             </div>
           )}
 
+          {/* Visitor */}
           {booking.visitorName && (
             <div className="flex items-start gap-3">
-              <Users className="w-5 h-5 text-gray-400 mt-0.5" />
-              <div>
+              <Users className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-700">Visitor</p>
-                <p className="text-gray-900">{booking.visitorName}</p>
+                <p className="text-gray-900 text-sm truncate">{booking.visitorName}</p>
                 {booking.companyName && (
-                  <p className="text-sm text-gray-500">{booking.companyName}</p>
+                  <p className="text-xs text-gray-500 truncate">{booking.companyName}</p>
                 )}
-              </div>
-            </div>
-          )}
-
-          {booking.meetingEquipments && booking.meetingEquipments.length > 0 && (
-            <div className="flex items-start gap-3">
-              <Wrench className="w-5 h-5 text-gray-400 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-700">Equipment</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {booking.meetingEquipments.map((item) => (
-                    <span
-                      key={item.equipment.id}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm"
-                    >
-                      {item.equipment.name}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Equipment - Full Width */}
+        {booking.meetingEquipments && booking.meetingEquipments.length > 0 && (
+          <div className="flex items-start gap-3 mt-4 pt-4 border-t border-gray-100">
+            <Wrench className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-700">Equipment</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {booking.meetingEquipments.map((item) => (
+                  <span
+                    key={item.equipment.id}
+                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                  >
+                    {item.equipment.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Request */}

@@ -49,6 +49,7 @@ export interface UpdateUserDTO {
 }
 
 export interface CreateMeetingDTO {
+  category?: 'EXTERNAL' | 'INTERNAL';
   agenda: string;
   gtimName?: string;
   visitorName?: string;

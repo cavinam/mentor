@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { type SpecialRequest } from './SpecialRequestsField';
 import { BookingHeader } from './BookingHeader';
 import { BookingViewMode } from './BookingViewMode';
-import { BookingFormMode } from './BookingFormMode';
+import { BookingFormMode, bookingFormSchema, type FormErrors } from './BookingFormMode';
 
 interface BookingPanelProps {
   mode: 'create' | 'view' | 'edit';
@@ -30,8 +30,10 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
 
   const [startDateTime, setStartDateTime] = useState<Date | undefined>(undefined);
   const [endDateTime, setEndDateTime] = useState<Date | undefined>(undefined);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const [formData, setFormData] = useState({
+    category: 'EXTERNAL' as 'EXTERNAL' | 'INTERNAL',
     agenda: '',
     gtimName: '',
     visitorName: '',
@@ -62,6 +64,7 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
       setBooking(response.data);
 
       setFormData({
+        category: response.data.category || 'EXTERNAL',
         agenda: response.data.agenda,
         gtimName: response.data.gtimName || '',
         visitorName: response.data.visitorName || '',
@@ -121,8 +124,28 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Zod Validation
+    const result = bookingFormSchema.safeParse(formData);
+
+    if (!result.success) {
+      const errors: FormErrors = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof FormErrors;
+        if (!errors[field]) {
+          errors[field] = err.message;
+        }
+      });
+      setFormErrors(errors);
+      toast.error('Mohon lengkapi semua field yang wajib diisi');
+      return;
+    }
+
+    // Clear errors if validation passes
+    setFormErrors({});
+
+    // Date/time validation
     if (!startDateTime || !endDateTime) {
-      toast.error('Please select start and end date/time');
+      toast.error('Start Date & Time dan End Date & Time wajib diisi');
       return;
     }
 
@@ -188,6 +211,7 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
   const handleCancelEdit = () => {
     if (booking) {
       setFormData({
+        category: booking.category || 'EXTERNAL',
         agenda: booking.agenda,
         gtimName: booking.gtimName || '',
         visitorName: booking.visitorName || '',
@@ -249,6 +273,7 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
             endDateTime={endDateTime}
             isSaving={isSaving}
             currentBookingId={bookingId}
+            errors={formErrors}
             onInputChange={handleInputChange}
             onStartDateTimeChange={setStartDateTime}
             onEndDateTimeChange={setEndDateTime}

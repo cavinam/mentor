@@ -3,6 +3,15 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Department, User, DepartmentApprover, DepartmentApprovers } from '@/types';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   ApproversHeader,
   ApprovalSystemInfo,
@@ -20,6 +29,11 @@ export default function ApproversPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedLevel1User, setSelectedLevel1User] = useState('');
+
+  // Delete confirmation dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [approverToDelete, setApproverToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Get HRGA Managers for auto-fill
   const hrgaManagers = potentialApprovers.filter(u => u.role === 'HRGA_MANAGER');
@@ -82,7 +96,7 @@ export default function ApproversPage() {
 
   const handleAddApprover = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Get selected department info
     const selectedDept = departments.find(d => d.id === selectedDepartment);
     const isHRGADepartment = selectedDept?.name.toUpperCase() === 'HRGA';
@@ -90,19 +104,19 @@ export default function ApproversPage() {
     // For HRGA department, only need Level 2 (HRGA Manager)
     if (isHRGADepartment) {
       if (hrgaManagers.length === 0) {
-        alert('No HRGA Manager found. Please create a user with HRGA_MANAGER role first.');
+        toast.error('No HRGA Manager found. Please create a user with HRGA_MANAGER role first.');
         return;
       }
     } else {
       // For other departments, need Level 1 (Section Head)
       if (!selectedLevel1User) {
-        alert('Please select Level 1 approver (Section Head)');
+        toast.error('Please select Level 1 approver (Section Head)');
         return;
       }
     }
 
     if (hrgaManagers.length === 0) {
-      alert('No HRGA Manager found. Please create a user with HRGA_MANAGER role first.');
+      toast.error('No HRGA Manager found. Please create a user with HRGA_MANAGER role first.');
       return;
     }
 
@@ -115,9 +129,9 @@ export default function ApproversPage() {
           userId: selectedLevel1User,
           approverRole: 'SECTION_HEAD',
         });
-        
+
         if (!level1Response.data.success) {
-          alert(level1Response.data.message || 'Failed to add Level 1 approver');
+          toast.error(level1Response.data.message || 'Failed to add Level 1 approver');
           return;
         }
       }
@@ -128,42 +142,50 @@ export default function ApproversPage() {
         userId: hrgaManagers[0].id,
         approverRole: 'HRGA_MANAGER',
       });
-      
+
       // Level 2 might already exist, so we just log it
       if (!level2Response.data.success && !level2Response.data.message?.includes('already exists')) {
         console.warn('Level 2 approver note:', level2Response.data.message);
       }
 
-      alert(`Approvers added successfully${isHRGADepartment ? ' (HRGA dept: Direct to Level 2)' : ''}`);
+      toast.success(`Approvers added successfully${isHRGADepartment ? ' (HRGA dept: Direct to Level 2)' : ''}`);
       setShowAddModal(false);
       setSelectedDepartment('');
       setSelectedLevel1User('');
       fetchApprovers();
     } catch (error: any) {
       console.error('Error adding approver:', error);
-      alert(error.response?.data?.message || 'Failed to add approver');
+      toast.error(error.response?.data?.message || 'Failed to add approver');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleRemoveApprover = async (approverId: string) => {
-    if (!confirm('Are you sure you want to remove this approver?')) {
-      return;
-    }
+  const handleRemoveApprover = (approverId: string) => {
+    setApproverToDelete(approverId);
+    setDeleteConfirmOpen(true);
+  };
 
+  const confirmRemoveApprover = async () => {
+    if (!approverToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const response = await api.delete(`/approvers/${approverId}`);
-      
+      const response = await api.delete(`/approvers/${approverToDelete}`);
+
       if (response.data.success) {
-        alert('Approver removed successfully');
+        toast.success('Approver removed successfully');
         fetchApprovers();
       } else {
-        alert(response.data.message || 'Failed to remove approver');
+        toast.error(response.data.message || 'Failed to remove approver');
       }
     } catch (error: any) {
       console.error('Error removing approver:', error);
-      alert(error.response?.data?.message || 'Failed to remove approver');
+      toast.error(error.response?.data?.message || 'Failed to remove approver');
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmOpen(false);
+      setApproverToDelete(null);
     }
   };
 
@@ -229,6 +251,44 @@ export default function ApproversPage() {
           setSelectedLevel1User('');
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Remove Approver</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this approver? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <button
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmRemoveApprover}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {isDeleting ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Removing...
+                </>
+              ) : (
+                'Remove'
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

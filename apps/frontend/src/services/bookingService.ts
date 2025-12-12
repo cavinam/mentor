@@ -2,6 +2,7 @@ import { api } from '@/lib/api';
 import type { SpecialRequest } from '@/components/mentor/bookings/SpecialRequestsField';
 
 export interface CreateBookingDTO {
+  category?: 'EXTERNAL' | 'INTERNAL';
   agenda: string;
   gtimName?: string;
   visitorName?: string;
@@ -20,6 +21,7 @@ export interface CreateBookingDTO {
 
 export interface Booking {
   id: string;
+  category?: 'EXTERNAL' | 'INTERNAL';
   agenda: string;
   gtimName?: string;
   visitorName?: string;

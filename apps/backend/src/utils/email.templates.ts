@@ -32,50 +32,50 @@ function formatDate(dateStr: string): string {
 
 function getMeetingDetailsTable(data: MeetingEmailData): string {
   return `
-    <table cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+    <table cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; margin: 12px 0;">
       <tr>
-        <td style="padding: 12px 16px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; width: 140px; font-size: 14px;">Agenda</td>
-        <td style="padding: 12px 16px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 14px; font-weight: 600;">${data.agenda}</td>
+        <td style="padding: 8px 12px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; width: 110px; font-size: 13px;">Agenda</td>
+        <td style="padding: 8px 12px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 13px; font-weight: 600;">${data.agenda}</td>
       </tr>
       ${data.gtimName ? `
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Nama GTIM</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.gtimName}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Nama GTIM</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.gtimName}</td>
       </tr>` : ''}
       ${data.visitorName ? `
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Nama Visitor</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.visitorName}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Nama Visitor</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.visitorName}</td>
       </tr>` : ''}
       ${data.companyName ? `
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Perusahaan</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.companyName}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Perusahaan</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.companyName}</td>
       </tr>` : ''}
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Tanggal</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${formatDate(data.startDate)}${data.startDate !== data.endDate ? ` - ${formatDate(data.endDate)}` : ''}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Tanggal</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${formatDate(data.startDate)}${data.startDate !== data.endDate ? ` - ${formatDate(data.endDate)}` : ''}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Waktu</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.startTime} - ${data.endTime}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Waktu</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.startTime} - ${data.endTime}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Lokasi</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.isGenbaVisit ? 'Genba Visit' : (data.meetingRoom || '-')}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Lokasi</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.isGenbaVisit ? 'Genba Visit' : (data.meetingRoom || '-')}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Department</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.departmentName}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Department</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.departmentName}</td>
       </tr>
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Dibuat oleh</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.creatorName} (${data.creatorEmail})</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Dibuat oleh</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.creatorName} (<a href="mailto:${data.creatorEmail}" style="color: #3b82f6;">${data.creatorEmail}</a>)</td>
       </tr>
       ${data.request ? `
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 14px;">Request Khusus</td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;">${data.request}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 13px;">Request</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 13px;">${data.request}</td>
       </tr>` : ''}
     </table>
   `;
@@ -85,19 +85,19 @@ function getMeetingDetailsTable(data: MeetingEmailData): string {
 function getApprovalActionButtons(meetingId: string): string {
   const approvalUrl = `${config.frontendUrl}/approvals?meetingId=${meetingId}`;
   return `
-    <table cellpadding="0" cellspacing="0" style="width: 100%; margin: 24px 0;">
+    <table cellpadding="0" cellspacing="0" style="width: 100%; margin: 16px 0;">
       <tr>
         <td align="center">
-          <table cellpadding="0" cellspacing="0">
+          <table cellpadding="0" cellspacing="0" style="border-collapse: separate;">
             <tr>
-              <td align="center" style="border-radius: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                <a href="${approvalUrl}" target="_blank" style="display: inline-block; padding: 16px 32px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
+              <td align="center" bgcolor="#059669" style="border-radius: 8px; background-color: #059669; border: 2px solid #047857;">
+                <a href="${approvalUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 6px;">
                   ✅ Approve / Reject Meeting
                 </a>
               </td>
             </tr>
           </table>
-          <p style="margin: 12px 0 0 0; font-size: 13px; color: #64748b;">
+          <p style="margin: 8px 0 0 0; font-size: 12px; color: #64748b;">
             Klik tombol di atas untuk memproses approval
           </p>
         </td>
@@ -147,11 +147,11 @@ export function meetingCreatedTemplate(data: MeetingEmailData, recipientName: st
                     </tr>
                   </table>
                   
+                  <!-- Action Button (placed before details for visibility) -->
+                  ${getApprovalActionButtons(data.meetingId)}
+                  
                   <!-- Meeting Details -->
                   ${getMeetingDetailsTable(data)}
-                  
-                  <!-- Action Button -->
-                  ${getApprovalActionButtons(data.meetingId)}
                 </td>
               </tr>
               
@@ -216,11 +216,11 @@ export function sectionHeadApprovedTemplate(data: MeetingEmailData, recipientNam
                     </tr>
                   </table>
                   
+                  <!-- Action Button (placed before details for visibility) -->
+                  ${getApprovalActionButtons(data.meetingId)}
+                  
                   <!-- Meeting Details -->
                   ${getMeetingDetailsTable(data)}
-                  
-                  <!-- Action Button -->
-                  ${getApprovalActionButtons(data.meetingId)}
                 </td>
               </tr>
               

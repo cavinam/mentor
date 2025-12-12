@@ -52,11 +52,11 @@ export default function DashboardLayout({
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex">
+      <div className="h-screen bg-gray-50 overflow-hidden">
+        <div className="flex h-full">
           {/* Sidebar */}
           <aside
-            className={`h-screen bg-white border-r border-gray-200 flex flex-col sticky top-0 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
+            className={`h-full bg-white border-r border-gray-200 flex flex-col flex-shrink-0 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
               }`}
           >
             {/* Logo/Brand */}
@@ -86,9 +86,9 @@ export default function DashboardLayout({
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto">
-            {/* Header with Toggle Button and Breadcrumb */}
-            <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+          <main className="flex-1 flex flex-col min-w-0 h-full">
+            {/* Header with Toggle Button and Breadcrumb - Fixed at top */}
+            <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 z-10">
               <div className="h-[60px] flex items-center px-4 gap-4">
                 {/* Toggle Button */}
                 <button
@@ -121,8 +121,12 @@ export default function DashboardLayout({
                 </nav>
               </div>
             </div>
-            <div className="p-8">
-              {children}
+
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-8">
+                {children}
+              </div>
             </div>
           </main>
         </div>

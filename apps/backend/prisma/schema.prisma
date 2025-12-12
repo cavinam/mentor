@@ -51,6 +51,11 @@ enum SpecialRequestType {
   SERAGAM
 }
 
+enum BookingCategory {
+  EXTERNAL
+  INTERNAL
+}
+
 // ===============================================
 // MODELS
 // ===============================================
@@ -154,6 +159,8 @@ model Meeting {
   request       String? // Catatan atau permintaan khusus
 
   isGenbaVisit  Boolean             @default(false) @map("is_genba_visit") // Flag for genba visit
+
+  category      BookingCategory     @default(EXTERNAL) @map("category") // EXTERNAL or INTERNAL
 
   // Status booking secara keseluruhan
   overallStatus BookingStatus       @default(PENDING) @map("overall_status")

@@ -132,6 +132,7 @@ export const historyService = {
     const where: any = {
       isDeleted: false,
       companyName: { not: null },
+      category: 'EXTERNAL', // Only show external meetings in summary visitor
       startDate: {
         gte: startDate,
         lte: endDate,
