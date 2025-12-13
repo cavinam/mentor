@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/store/authStore';
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Loader2, Search, X } from 'lucide-react';
+import { Plus, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Loader2, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { bookingService, Booking } from '@/services/bookingService';
 import { BookingPanel } from '@/components/mentor/bookings/BookingPanel';
 import { format, parseISO } from 'date-fns';
@@ -17,6 +17,10 @@ export default function BookingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Panel state
   const [panelMode, setPanelMode] = useState<'create' | 'view' | null>(null);
@@ -66,11 +70,12 @@ export default function BookingsPage() {
     setSearchQuery('');
     setStartDateFilter('');
     setEndDateFilter('');
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
   // Filter bookings based on search and date range
   const filteredBookings = useMemo(() => {
-    return bookings.filter((booking) => {
+    const filtered = bookings.filter((booking) => {
       // Search filter - check agenda, room name, visitor name, company name
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery ||
@@ -98,9 +103,32 @@ export default function BookingsPage() {
 
       return matchesSearch && matchesDateRange;
     });
+
+    // Reset to first page when filter changes
+    return filtered;
   }, [bookings, searchQuery, startDateFilter, endDateFilter]);
 
-  // Calculate stats from filtered bookings
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, startDateFilter, endDateFilter]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBookings = filteredBookings.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Calculate stats from filtered bookings (not paginated)
   const stats = {
     total: filteredBookings.length,
     pending: filteredBookings.filter((b) => b.overallStatus === 'PENDING').length,
@@ -278,7 +306,7 @@ export default function BookingsPage() {
                     <p className="text-gray-500">Loading bookings...</p>
                   </td>
                 </tr>
-              ) : filteredBookings.length === 0 ? (
+              ) : paginatedBookings.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -293,7 +321,7 @@ export default function BookingsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((booking) => (
+                paginatedBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{booking.agenda}</div>
@@ -338,6 +366,73 @@ export default function BookingsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!isLoading && filteredBookings.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <span>
+                Showing {startIndex + 1} - {Math.min(endIndex, filteredBookings.length)} of {filteredBookings.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <span>Per page:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Page numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((page) => {
+                    // Show first, last, current, and adjacent pages
+                    return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                  })
+                  .map((page, index, array) => (
+                    <div key={page} className="flex items-center">
+                      {index > 0 && array[index - 1] !== page - 1 && (
+                        <span className="px-2 text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 py-1 rounded text-sm ${currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Booking Panel */}
@@ -360,3 +455,4 @@ export default function BookingsPage() {
     </div>
   );
 }
+

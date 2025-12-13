@@ -33,7 +33,7 @@ export default function CalendarPage() {
     try {
       setIsLoading(true);
       const [bookingsRes, roomsRes] = await Promise.all([
-        bookingService.getAll(),
+        bookingService.getAll({ limit: 10000 }), // Get all bookings for calendar
         roomService.getAll(),
       ]);
       setBookings(bookingsRes.data);
@@ -300,6 +300,14 @@ export default function CalendarPage() {
               </div>
             );
           })}
+          {/* No Room / Genba Visit legend */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-4 h-4 rounded"
+              style={{ backgroundColor: '#9ca3af' }}
+            ></div>
+            <span className="text-sm text-gray-700">No Room / Genba Visit</span>
+          </div>
         </div>
 
         <div className="mt-4 pt-4 border-t border-gray-200">

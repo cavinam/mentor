@@ -27,8 +27,10 @@ export const meetingService = {
     }
 
     if (startDate && endDate) {
-      where.startDate = { gte: new Date(startDate) };
-      where.endDate = { lte: new Date(endDate) };
+      // Use overlap logic: meeting overlaps with filter range if
+      // meeting.startDate <= filter.endDate AND meeting.endDate >= filter.startDate
+      where.startDate = { lte: new Date(endDate) };
+      where.endDate = { gte: new Date(startDate) };
     }
 
     const [meetings, total] = await Promise.all([

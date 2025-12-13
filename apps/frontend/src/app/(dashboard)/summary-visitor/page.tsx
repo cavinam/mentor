@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   History,
   Calendar,
@@ -49,6 +49,10 @@ export default function SummaryVisitorPage() {
   // Selected meeting for detail view
   const [selectedMeeting, setSelectedMeeting] = useState<CompanyVisit | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Fetch data
   const fetchData = async () => {
     try {
@@ -81,6 +85,28 @@ export default function SummaryVisitorPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth, selectedYear, searchQuery]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(companies.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCompanies = companies.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setExpandedCompanies(new Set()); // Collapse all when changing page
+  };
+
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+    setExpandedCompanies(new Set());
+  };
 
   // Navigate months
   const goToPreviousMonth = () => {
@@ -241,7 +267,7 @@ export default function SummaryVisitorPage() {
               </p>
             </div>
           ) : (
-            companies.map((company) => (
+            paginatedCompanies.map((company) => (
               <div key={company.companyName}>
                 {/* Company Row - Compact */}
                 <button
@@ -323,6 +349,72 @@ export default function SummaryVisitorPage() {
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {!isLoading && companies.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <span>
+                Showing {startIndex + 1} - {Math.min(endIndex, companies.length)} of {companies.length} companies
+              </span>
+              <div className="flex items-center gap-2">
+                <span>Per page:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Page numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((page) => {
+                    return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                  })
+                  .map((page, index, array) => (
+                    <div key={page} className="flex items-center">
+                      {index > 0 && array[index - 1] !== page - 1 && (
+                        <span className="px-1.5 text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={() => handlePageChange(page)}
+                        className={`px-2.5 py-1 rounded text-sm ${currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="p-1.5 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Meeting Detail Modal */}
@@ -400,3 +492,4 @@ export default function SummaryVisitorPage() {
     </div>
   );
 }
+

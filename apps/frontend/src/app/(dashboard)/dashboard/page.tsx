@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/store/authStore';
 import { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, Building2, Clock, Users, Briefcase, FileText, Loader2, Eye, X } from 'lucide-react';
+import { Calendar, CheckSquare, Building2, Clock, Users, Briefcase, FileText, Loader2, Eye, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { bookingService, Booking } from '@/services/bookingService';
 import Link from 'next/link';
 import {
@@ -20,6 +20,10 @@ export default function DashboardPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -35,6 +39,7 @@ export default function DashboardPage() {
         const response = await bookingService.getAll({
           startDate: today,
           endDate: today,
+          limit: 10000, // Get all bookings for today, not just default 10
         });
         // Filter out CANCELED and REJECTED bookings
         const filteredBookings = response.data.filter(
@@ -93,6 +98,12 @@ export default function DashboardPage() {
     pending: todayBookings.filter((b) => b.overallStatus === 'PENDING').length,
     approved: todayBookings.filter((b) => b.overallStatus === 'APPROVED').length,
   };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(todayBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBookings = todayBookings.slice(startIndex, endIndex);
 
   return (
     <div>
@@ -199,8 +210,8 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {todayBookings.length > 0 ? (
-                    todayBookings.map((booking) => (
+                  {paginatedBookings.length > 0 ? (
+                    paginatedBookings.map((booking) => (
                       <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
                         {/* Waktu */}
                         <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
@@ -296,6 +307,45 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Menampilkan {startIndex + 1} - {Math.min(endIndex, todayBookings.length)} dari {todayBookings.length} booking
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Booking Detail Modal */}

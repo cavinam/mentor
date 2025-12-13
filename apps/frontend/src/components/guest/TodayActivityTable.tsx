@@ -1,6 +1,7 @@
 'use client';
 
-import { Clock, Users, Building2, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, Users, Building2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Booking } from '@/services/bookingService';
 
 interface TodayActivityTableProps {
@@ -9,6 +10,16 @@ interface TodayActivityTableProps {
 }
 
 export function TodayActivityTable({ bookings, onViewDetail }: TodayActivityTableProps) {
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Pagination calculations
+    const totalPages = Math.ceil(bookings.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedBookings = bookings.slice(startIndex, endIndex);
+
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
             <div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -51,8 +62,8 @@ export function TodayActivityTable({ bookings, onViewDetail }: TodayActivityTabl
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {bookings.length > 0 ? (
-                            bookings.map((booking) => (
+                        {paginatedBookings.length > 0 ? (
+                            paginatedBookings.map((booking) => (
                                 <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                                         {booking.startTime} - {booking.endTime}
@@ -121,6 +132,46 @@ export function TodayActivityTable({ bookings, onViewDetail }: TodayActivityTabl
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                        Menampilkan {startIndex + 1} - {Math.min(endIndex, bookings.length)} dari {bookings.length} booking
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${currentPage === page
+                                            ? 'bg-blue-600 text-white'
+                                            : 'hover:bg-gray-100 text-gray-700'
+                                        }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

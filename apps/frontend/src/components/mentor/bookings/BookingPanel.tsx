@@ -84,8 +84,17 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
         const startDateStr = response.data.startDate.split('T')[0]; // Handle ISO format
         const endDateStr = response.data.endDate.split('T')[0];
 
-        const startDate = parse(`${startDateStr} ${response.data.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
-        const endDate = parse(`${endDateStr} ${response.data.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+        // Normalize time format (handle both HH:mm and HH:mm:ss)
+        const normalizeTime = (time: string) => {
+          const parts = time.split(':');
+          return `${parts[0]}:${parts[1]}`; // Only take HH:mm
+        };
+
+        const startTimeNormalized = normalizeTime(response.data.startTime);
+        const endTimeNormalized = normalizeTime(response.data.endTime);
+
+        const startDate = parse(`${startDateStr} ${startTimeNormalized}`, 'yyyy-MM-dd HH:mm', new Date());
+        const endDate = parse(`${endDateStr} ${endTimeNormalized}`, 'yyyy-MM-dd HH:mm', new Date());
 
         // Validate parsed dates
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -226,8 +235,16 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
         specialRequests: booking.specialRequests || [],
       });
 
-      const startDate = parse(`${booking.startDate} ${booking.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
-      const endDate = parse(`${booking.endDate} ${booking.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+      // Normalize time format (handle both HH:mm and HH:mm:ss)
+      const normalizeTime = (time: string) => {
+        const parts = time.split(':');
+        return `${parts[0]}:${parts[1]}`;
+      };
+
+      const startDateStr = booking.startDate.split('T')[0];
+      const endDateStr = booking.endDate.split('T')[0];
+      const startDate = parse(`${startDateStr} ${normalizeTime(booking.startTime)}`, 'yyyy-MM-dd HH:mm', new Date());
+      const endDate = parse(`${endDateStr} ${normalizeTime(booking.endTime)}`, 'yyyy-MM-dd HH:mm', new Date());
       setStartDateTime(startDate);
       setEndDateTime(endDate);
     }
