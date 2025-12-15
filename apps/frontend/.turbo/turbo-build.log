@@ -1,0 +1,44 @@
+
+> frontend@1.0.0 build D:\mentor v1.1\apps\frontend
+> next build
+
+   ▲ Next.js 15.5.6
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 14.7s
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/16) ...
+   Generating static pages (4/16) 
+   Generating static pages (8/16) 
+   Generating static pages (12/16) 
+ ✓ Generating static pages (16/16)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                     2.9 kB         129 kB
+├ ○ /_not-found                            994 B         103 kB
+├ ○ /approvals                           6.73 kB         129 kB
+├ ○ /bookings                            3.34 kB         237 kB
+├ ƒ /bookings/[id]                         646 B         234 kB
+├ ○ /calendar                            55.2 kB         289 kB
+├ ○ /dashboard                            5.5 kB         157 kB
+├ ○ /login                               12.7 kB         153 kB
+├ ○ /master/approvers                    5.24 kB         156 kB
+├ ○ /master/departments                  3.33 kB         129 kB
+├ ○ /master/equipment                    2.81 kB         128 kB
+├ ○ /master/rooms                         3.3 kB         129 kB
+├ ○ /master/users                        4.04 kB         130 kB
+├ ○ /summary-visitor                     5.95 kB         135 kB
+└ ○ /view                                4.49 kB         135 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/487-66606708ce14e314.js       45.7 kB
+  ├ chunks/690f444d-850ff6f23faf1ddc.js  54.2 kB
+  └ other shared chunks (total)          2.06 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

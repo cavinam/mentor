@@ -15,6 +15,9 @@ export const approvalService = {
         status: ApprovalStatus.PENDING,
         meeting: {
           isDeleted: false,
+          overallStatus: {
+            notIn: [BookingStatus.CANCELED, BookingStatus.REJECTED],
+          },
         },
       }
       : {
@@ -22,6 +25,9 @@ export const approvalService = {
         status: ApprovalStatus.PENDING,
         meeting: {
           isDeleted: false,
+          overallStatus: {
+            notIn: [BookingStatus.CANCELED, BookingStatus.REJECTED],
+          },
         },
       };
 

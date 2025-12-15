@@ -13,7 +13,7 @@ module.exports = {
             name: 'mentor-frontend',
             cwd: './apps/frontend',
             script: 'node_modules/next/dist/bin/next',
-            args: 'start -p 80',
+            args: 'start -p 8080',
             env: {
                 NODE_ENV: 'production'
             }

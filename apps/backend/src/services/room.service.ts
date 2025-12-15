@@ -126,7 +126,7 @@ export const roomService = {
         meetingRoomId: roomId,
         isDeleted: false,
         overallStatus: {
-          not: 'CANCELED',
+          notIn: ['CANCELED', 'REJECTED'],
         },
         ...(excludeMeetingId && { id: { not: excludeMeetingId } }),
         OR: [
