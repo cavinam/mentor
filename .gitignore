@@ -15,8 +15,16 @@ out/
 # Misc
 .DS_Store
 *.pem
-# .env
+
+# Environment files
+.env
+.env.local
 .env*.local
+.env.development
+.env.production
+apps/backend/.env
+apps/frontend/.env
+apps/frontend/.env.local
 
 # Debug
 npm-debug.log*

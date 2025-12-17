@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { View } from 'react-big-calendar';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format } from 'date-fns';
 import { BookingCalendar, CalendarEvent, ROOM_COLORS } from '@/components/mentor/calendar/BookingCalendar';
 import { BookingPanel } from '@/components/mentor/bookings/BookingPanel';
 import { bookingService, type Booking } from '@/services/bookingService';
 import { roomService, type Room } from '@/services/roomService';
-import { Search, X } from 'lucide-react';
+import { Search, X, Calendar as CalendarIcon } from 'lucide-react';
 
 export default function CalendarPage() {
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
@@ -98,9 +98,11 @@ export default function CalendarPage() {
           title: booking.agenda,
           start: eventStart,
           end: eventEnd,
+          resourceId: booking.meetingRoomId || undefined, // Link to room column in week/day views
           resource: {
             status: booking.overallStatus === 'CANCELED' ? 'CANCELLED' : booking.overallStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED',
             room: booking.meetingRoom?.name || 'No Room',
+            roomId: booking.meetingRoomId,
             bookedBy: booking.user?.fullName || 'Unknown',
             department: booking.department?.name,
             gtimName: booking.gtimName,
@@ -264,6 +266,27 @@ export default function CalendarPage() {
                 ))}
               </select>
             </div>
+
+            {/* Date Picker for Day View */}
+            {currentView === 'day' && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Date:</label>
+                <div className="relative">
+                  <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={format(currentDate, 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value);
+                      if (!isNaN(newDate.getTime())) {
+                        setCurrentDate(newDate);
+                      }
+                    }}
+                    className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="text-sm text-gray-500">

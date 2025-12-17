@@ -3,8 +3,19 @@
 import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+// Custom CSS for resource view columns - simplified to only handle text styling
+const resourceViewStyles = `
+  .rbc-time-header-content .rbc-header {
+    font-size: 11px !important;
+    padding: 4px 2px !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    line-height: 1.2 !important;
+  }
+`;
 
 const locales = {
   'en-US': enUS,
@@ -23,9 +34,11 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
+  resourceId?: string; // Room ID for resource-based view
   resource?: {
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
     room: string;
+    roomId?: string;
     bookedBy: string;
     department?: string;
     gtimName?: string;
@@ -50,6 +63,12 @@ export const ROOM_COLORS = [
   { bg: '#9333ea', border: '#7e22ce', name: 'Violet' },    // Violet
   { bg: '#65a30d', border: '#4d7c0f', name: 'Lime' },      // Lime
 ];
+
+// Resource interface for room columns
+interface CalendarResource {
+  id: string;
+  title: string;
+}
 
 interface BookingCalendarProps {
   events?: CalendarEvent[];
@@ -89,11 +108,20 @@ export function BookingCalendar({
     else setInternalDate(newDate);
   };
 
+  // Create resources from rooms for week/day view columns
+  const resources: CalendarResource[] = useMemo(() => {
+    return rooms.map(room => ({
+      id: room.id,
+      title: room.name,
+    }));
+  }, [rooms]);
+
   // Create a map of room names to colors
   const roomColorMap = useMemo(() => {
     const map: Record<string, typeof ROOM_COLORS[0]> = {};
     rooms.forEach((room, index) => {
       map[room.name] = ROOM_COLORS[index % ROOM_COLORS.length];
+      map[room.id] = ROOM_COLORS[index % ROOM_COLORS.length];
     });
     return map;
   }, [rooms]);
@@ -102,7 +130,7 @@ export function BookingCalendar({
   const eventStyleGetter = useCallback(
     (event: CalendarEvent) => {
       const roomName = event.resource?.room || '';
-      const colorScheme = roomColorMap[roomName] || { bg: '#6b7280', border: '#4b5563' };
+      const colorScheme = roomColorMap[roomName] || roomColorMap[event.resourceId || ''] || { bg: '#6b7280', border: '#4b5563' };
 
       return {
         style: {
@@ -115,6 +143,9 @@ export function BookingCalendar({
     [roomColorMap]
   );
 
+  // Check if we should show resources (only in day view when rooms exist)
+  const showResources = currentView === 'day' && resources.length > 0;
+
   // Custom components
   const components = useMemo(
     () => ({
@@ -123,15 +154,13 @@ export function BookingCalendar({
           className="text-xs px-1 overflow-hidden"
           title={`${event.title}\nRoom: ${event.resource?.room || 'N/A'}\nBy: ${event.resource?.bookedBy || 'Unknown'}\nStatus: ${event.resource?.status}`}
         >
-          <div className="font-semibold truncate flex items-center gap-1">
+          <div className="font-semibold truncate">
             <span>{event.title}</span>
-            {event.resource?.room && (
-              <>
-                <span className="opacity-50">•</span>
-                <span className="font-normal opacity-90 truncate">{event.resource.room}</span>
-              </>
-            )}
           </div>
+          {/* Show room name only in month view where resources aren't shown as columns */}
+          {!showResources && event.resource?.room && (
+            <div className="text-[10px] opacity-80 truncate">{event.resource.room}</div>
+          )}
         </div>
       ),
       agenda: {
@@ -163,12 +192,22 @@ export function BookingCalendar({
           </div>
         ),
       },
+      // Custom resource header for room column names
+      resourceHeader: ({ label, resource }: { label: React.ReactNode; resource: CalendarResource }) => (
+        <div
+          className="text-center font-semibold text-gray-700 py-1 px-1 bg-gray-50 border-b border-gray-200 text-xs leading-tight min-h-[40px] flex items-center justify-center"
+          title={resource?.title || String(label)}
+        >
+          <span className="break-words hyphens-auto">{label}</span>
+        </div>
+      ),
     }),
-    []
+    [showResources]
   );
 
   return (
     <div className="h-[700px] bg-white p-4 rounded-lg border border-gray-200">
+      {showResources && <style>{resourceViewStyles}</style>}
       <Calendar
         localizer={localizer}
         events={events}
@@ -189,6 +228,10 @@ export function BookingCalendar({
         timeslots={2}
         defaultView="month"
         views={['month', 'week', 'day', 'agenda']}
+        // Resource props for room columns in week/day views
+        resources={showResources ? resources : undefined}
+        resourceIdAccessor="id"
+        resourceTitleAccessor="title"
         messages={{
           next: 'Next',
           previous: 'Previous',

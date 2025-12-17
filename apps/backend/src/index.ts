@@ -22,6 +22,9 @@ const app: ReturnType<typeof express> = express();
 
 // CORS allowed origins
 const allowedOrigins = [
+  // Development
+  'http://localhost:3000',
+  'http://localhost:5000',
   // Domain without dash (gtim.local)
   'http://mentor.gtim.local:8080',
   'https://mentor.gtim.local:8080',
