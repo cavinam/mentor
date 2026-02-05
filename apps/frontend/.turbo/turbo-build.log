@@ -3,9 +3,10 @@
 > next build
 
    ▲ Next.js 15.5.6
+   - Environments: .env
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 14.7s
+ ✓ Compiled successfully in 15.8s
    Skipping linting
    Checking validity of types ...
    Collecting page data ...
@@ -18,12 +19,12 @@
    Collecting build traces ...
 
 Route (app)                                 Size  First Load JS
-┌ ○ /                                     2.9 kB         129 kB
+┌ ○ /                                    2.89 kB         129 kB
 ├ ○ /_not-found                            994 B         103 kB
 ├ ○ /approvals                           6.73 kB         129 kB
 ├ ○ /bookings                            3.34 kB         237 kB
 ├ ƒ /bookings/[id]                         646 B         234 kB
-├ ○ /calendar                            55.2 kB         289 kB
+├ ○ /calendar                            55.6 kB         289 kB
 ├ ○ /dashboard                            5.5 kB         157 kB
 ├ ○ /login                               12.7 kB         153 kB
 ├ ○ /master/approvers                    5.24 kB         156 kB
