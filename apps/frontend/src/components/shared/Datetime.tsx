@@ -1,9 +1,9 @@
 "use client";
- 
+
 import * as React from "react";
 import { CalendarIcon } from "@radix-ui/react-icons"
 import { format } from "date-fns";
- 
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,13 +19,15 @@ interface DateTimePicker24hProps {
   onChange?: (date: Date | undefined) => void;
   disabled?: boolean;
   placeholder?: string;
+  disablePastDates?: boolean;
 }
 
 export function DateTimePicker24h({
   value,
   onChange,
   disabled = false,
-  placeholder = "Pick date and time"
+  placeholder = "Pick date and time",
+  disablePastDates = false
 }: DateTimePicker24hProps) {
   const [date, setDate] = React.useState<Date | undefined>(value);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -70,6 +72,19 @@ export function DateTimePicker24h({
   // Validate date before rendering
   const isValidDate = date instanceof Date && !isNaN(date.getTime());
 
+  // Calculate disabled dates for calendar (dates before today)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Check if selected date is today (for disabling past hours)
+  const isToday = isValidDate &&
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  const currentHour = new Date().getHours();
+  const currentMinute = new Date().getMinutes();
+
   return (
     // @ts-ignore - React 19 type compatibility with Radix UI
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -100,6 +115,7 @@ export function DateTimePicker24h({
             selected={isValidDate ? date : undefined}
             onSelect={handleDateSelect}
             initialFocus
+            disabled={disablePastDates ? (dateToCheck) => dateToCheck < today : undefined}
           />
           <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
             {/* @ts-ignore - React 19 type compatibility with Radix UI */}

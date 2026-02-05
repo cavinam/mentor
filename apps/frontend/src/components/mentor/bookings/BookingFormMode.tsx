@@ -196,6 +196,7 @@ export function BookingFormMode({
                 value={startDateTime}
                 onChange={onStartDateTimeChange}
                 disabled={formData.allDay}
+                disablePastDates={true}
               />
             </div>
 
@@ -207,6 +208,7 @@ export function BookingFormMode({
                 value={endDateTime}
                 onChange={onEndDateTimeChange}
                 disabled={formData.allDay}
+                disablePastDates={true}
               />
             </div>
           </div>

@@ -158,6 +158,19 @@ export function BookingPanel({ mode: initialMode, bookingId, onClose, onSuccess 
       return;
     }
 
+    // Backdate validation - prevent booking in the past
+    const now = new Date();
+    if (startDateTime < now) {
+      toast.error('Tidak dapat membuat booking untuk tanggal/waktu yang sudah lewat');
+      return;
+    }
+
+    // End date/time validation - end must be after start
+    if (endDateTime <= startDateTime) {
+      toast.error('Tanggal/waktu selesai harus lebih besar dari tanggal/waktu mulai');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const bookingData = {

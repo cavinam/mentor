@@ -131,14 +131,45 @@ export const meetingService = {
   create: async (data: CreateMeetingDTO & { userId: string; departmentId?: string }) => {
     const { equipments, specialRequests, userId, departmentId, meetingRoomId, startDate, endDate, startTime, endTime, ...meetingData } = data;
 
-    // VALIDATION: Prevent backdate booking
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset to start of day
+    // VALIDATION: Prevent backdate booking (date AND time)
+    const now = new Date();
     const bookingStartDate = new Date(startDate);
-    bookingStartDate.setHours(0, 0, 0, 0);
 
-    if (bookingStartDate < today) {
+    // Compare date only first
+    const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const bookingDateOnly = new Date(bookingStartDate.getFullYear(), bookingStartDate.getMonth(), bookingStartDate.getDate());
+
+    if (bookingDateOnly < todayDateOnly) {
       throw new Error('Tidak dapat membuat booking untuk tanggal yang sudah lewat');
+    }
+
+    // If booking is for today, also check the time
+    if (bookingDateOnly.getTime() === todayDateOnly.getTime() && startTime) {
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const bookingStartDateTime = new Date(bookingStartDate);
+      bookingStartDateTime.setHours(startHour, startMinute, 0, 0);
+
+      if (bookingStartDateTime < now) {
+        throw new Error('Tidak dapat membuat booking untuk waktu yang sudah lewat');
+      }
+    }
+
+    // VALIDATION: End date must be >= Start date
+    const bookingEndDate = new Date(endDate);
+    if (bookingEndDate < bookingStartDate) {
+      throw new Error('Tanggal selesai tidak boleh lebih awal dari tanggal mulai');
+    }
+
+    // VALIDATION: If same day, end time must be >= start time
+    if (bookingEndDate.getTime() === bookingStartDate.getTime() && startTime && endTime) {
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const [endHour, endMinute] = endTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMinute;
+      const endMinutes = endHour * 60 + endMinute;
+
+      if (endMinutes <= startMinutes) {
+        throw new Error('Waktu selesai harus lebih besar dari waktu mulai');
+      }
     }
 
     // Get user's department if departmentId not provided
@@ -310,14 +341,45 @@ export const meetingService = {
     const finalStartTime = startTime || existingMeeting.startTime;
     const finalEndTime = endTime || existingMeeting.endTime;
 
-    // VALIDATION: Prevent backdate booking
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset to start of day
+    // VALIDATION: Prevent backdate booking (date AND time)
+    const now = new Date();
     const bookingStartDate = new Date(finalStartDate);
-    bookingStartDate.setHours(0, 0, 0, 0);
 
-    if (bookingStartDate < today) {
+    // Compare date only first
+    const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const bookingDateOnly = new Date(bookingStartDate.getFullYear(), bookingStartDate.getMonth(), bookingStartDate.getDate());
+
+    if (bookingDateOnly < todayDateOnly) {
       throw new Error('Tidak dapat mengubah booking ke tanggal yang sudah lewat');
+    }
+
+    // If booking is for today, also check the time
+    if (bookingDateOnly.getTime() === todayDateOnly.getTime() && finalStartTime) {
+      const [startHour, startMinute] = finalStartTime.split(':').map(Number);
+      const bookingStartDateTime = new Date(bookingStartDate);
+      bookingStartDateTime.setHours(startHour, startMinute, 0, 0);
+
+      if (bookingStartDateTime < now) {
+        throw new Error('Tidak dapat mengubah booking ke waktu yang sudah lewat');
+      }
+    }
+
+    // VALIDATION: End date must be >= Start date
+    const bookingEndDate = new Date(finalEndDate);
+    if (bookingEndDate < bookingStartDate) {
+      throw new Error('Tanggal selesai tidak boleh lebih awal dari tanggal mulai');
+    }
+
+    // VALIDATION: If same day, end time must be >= start time
+    if (bookingEndDate.getTime() === bookingStartDate.getTime() && finalStartTime && finalEndTime) {
+      const [startHour, startMinute] = finalStartTime.split(':').map(Number);
+      const [endHour, endMinute] = finalEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMinute;
+      const endMinutes = endHour * 60 + endMinute;
+
+      if (endMinutes <= startMinutes) {
+        throw new Error('Waktu selesai harus lebih besar dari waktu mulai');
+      }
     }
 
     // VALIDATION: Check meeting room availability if room is being changed/selected
