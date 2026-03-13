@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { config } from '../config/env';
 import { prisma } from '../config/database';
 import {
@@ -20,26 +21,35 @@ console.log('   Port:', config.smtp.port);
 console.log('   User:', config.smtp.user);
 console.log('   Pass:', config.smtp.pass ? '***configured***' : '⚠️ NOT SET');
 
-// Create nodemailer transporter
-const transporter = nodemailer.createTransport({
-    host: config.smtp.host,
-    port: config.smtp.port,
-    secure: config.smtp.secure,
-    auth: config.smtp.user && config.smtp.pass ? {
-        user: config.smtp.user,
-        pass: config.smtp.pass,
-    } : undefined,
-    tls: {
-        rejectUnauthorized: false, // For self-signed certificates
-    },
-    connectionTimeout: 10000, // 10 seconds timeout
-    greetingTimeout: 10000,
-});
+// Create a fresh transporter for each email send to avoid stale connections
+// (singleton transporter causes ETIMEDOUT after long PM2 uptime)
+function createTransporter() {
+    const options: SMTPTransport.Options = {
+        host: config.smtp.host,
+        port: config.smtp.port,
+        secure: config.smtp.secure,
+        auth: config.smtp.user && config.smtp.pass ? {
+            user: config.smtp.user,
+            pass: config.smtp.pass,
+        } : undefined,
+        tls: {
+            rejectUnauthorized: false, // For self-signed certificates
+        },
+        connectionTimeout: 30000, // 30 seconds timeout
+        greetingTimeout: 30000,
+        socketTimeout: 60000, // 60 seconds socket timeout
+    };
+    return nodemailer.createTransport(options);
+}
 
 // Helper function to send email
 async function sendEmail(to: string | string[], subject: string, html: string): Promise<boolean> {
     try {
         const recipients = Array.isArray(to) ? to.join(', ') : to;
+        console.log(`📧 Preparing to send email to: ${recipients}`);
+
+        // Create fresh transporter for each send
+        const transporter = createTransporter();
 
         const info = await transporter.sendMail({
             from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
@@ -49,6 +59,7 @@ async function sendEmail(to: string | string[], subject: string, html: string): 
         });
 
         console.log(`✉️ Email sent successfully to ${recipients}: ${info.messageId}`);
+        transporter.close(); // Clean up the connection
         return true;
     } catch (error) {
         console.error('❌ Error sending email:', error);
@@ -403,7 +414,9 @@ export const emailService = {
      */
     verifyConnection: async (): Promise<boolean> => {
         try {
+            const transporter = createTransporter();
             await transporter.verify();
+            transporter.close();
             console.log('✅ Email server connection verified');
             return true;
         } catch (error) {
