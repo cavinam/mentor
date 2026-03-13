@@ -24,7 +24,7 @@ console.log('   Pass:', config.smtp.pass ? '***configured***' : '⚠️ NOT SET'
 const transporter = nodemailer.createTransport({
     host: config.smtp.host,
     port: config.smtp.port,
-    secure: config.smtp.port === 465, // true for port 465, false for 587
+    secure: config.smtp.secure,
     auth: config.smtp.user && config.smtp.pass ? {
         user: config.smtp.user,
         pass: config.smtp.pass,

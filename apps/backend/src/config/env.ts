@@ -13,9 +13,10 @@ export const config = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   // Email Configuration
   smtp: {
-    host: process.env.SMTP_HOST || 'office.g-tim.co.id',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    user: process.env.SMTP_USER || 'notification@g-tim.co.id',
+    host: process.env.SMTP_HOST || 'gtim-co-id0c.mail.protection.outlook.com',
+    port: parseInt(process.env.SMTP_PORT || '25', 10),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
     fromName: process.env.SMTP_FROM_NAME || 'Visitor Apps Notification',
     fromEmail: process.env.SMTP_FROM_EMAIL || 'notification@g-tim.co.id',

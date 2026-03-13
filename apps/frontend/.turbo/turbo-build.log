@@ -6,7 +6,9 @@
    - Environments: .env
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 15.8s
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Compiled successfully in 65s
    Skipping linting
    Checking validity of types ...
    Collecting page data ...
